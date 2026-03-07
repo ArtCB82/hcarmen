@@ -1357,7 +1357,7 @@ async function cargarDatosDesdeSheet() {
         .map(f => ({
           id: f.syncId,
           syncId: f.syncId,
-          fecha: typeof f.fecha === 'object' ? f.fecha.toISOString?.().split('T')[0] : String(f.fecha),
+          fecha: parseFecha(f.fecha),
           proveedor: f.proveedor || '',
           tipo: f.tipo || 'factura',
           importeTotal: parseFloat(f.importe) || 0,
@@ -1376,7 +1376,7 @@ async function cargarDatosDesdeSheet() {
         .map(v => ({
           id: v.syncId,
           syncId: v.syncId,
-          fecha: typeof v.fecha === 'object' ? v.fecha.toISOString?.().split('T')[0] : String(v.fecha),
+          fecha: parseFecha(v.fecha),
           tienda: v.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
           efectivo: parseFloat(v.efectivo) || 0,
           tarjeta: parseFloat(v.tarjeta) || 0,
@@ -1395,7 +1395,7 @@ async function cargarDatosDesdeSheet() {
         .map(g => ({
           id: g.syncId,
           syncId: g.syncId,
-          fecha: typeof g.fecha === 'object' ? g.fecha.toISOString?.().split('T')[0] : String(g.fecha),
+          fecha: parseFecha(g.fecha),
           concepto: g.concepto || '',
           tienda: g.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
           importe: parseFloat(g.importe) || 0,
@@ -1620,6 +1620,21 @@ function renderProveedores() {
 }
 
 // ── HELPERS ──
+function parseFecha(val) {
+  if (!val) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(val))) return String(val);
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      return `${y}-${m}-${day}`;
+    }
+  } catch(e) {}
+  return String(val);
+}
+
 function enMes(fecha, y, m) {
   if (!fecha) return false;
   const d = new Date(fecha);
