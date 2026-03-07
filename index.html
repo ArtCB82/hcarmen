@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Alimentación HCarmen</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --verde: #2d6a4f;
+    --verde-claro: #40916c;
+    --verde-suave: #d8f3dc;
+    --crema: #fefae0;
+    --crema-oscura: #f5edd6;
+    --naranja: #e07a2f;
+    --naranja-suave: #fdecd6;
+    --rojo: #c1440e;
+    --gris: #6b7280;
+    --gris-claro: #f3f4f6;
+    --texto: #1a2e1a;
+    --blanco: #ffffff;
+    --sombra: 0 4px 20px rgba(45,106,79,0.12);
+    --sombra-fuerte: 0 8px 32px rgba(45,106,79,0.2);
+    --radio: 16px;
+    --radio-grande: 24px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Lato', sans-serif;
+    background: var(--crema);
+    color: var(--texto);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--verde);
+    color: var(--blanco);
+    padding: 20px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .btn-back {
+    background: rgba(255,255,255,0.18);
+    border: none;
+    color: white;
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .header-subtitle {
+    font-size: 12px;
+    opacity: 0.8;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: var(--naranja);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  /* ── PANTALLAS ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── HOME ── */
+  .home-hero {
+    background: linear-gradient(160deg, var(--verde) 0%, var(--verde-claro) 100%);
+    padding: 32px 20px 40px;
+    color: white;
+    text-align: center;
+  }
+  .home-hero .logo {
+    width: 72px; height: 72px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+    margin: 0 auto 16px;
+  }
+  .home-hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 900;
+    margin-bottom: 4px;
+  }
+  .home-hero p {
+    font-size: 14px;
+    opacity: 0.85;
+    font-weight: 300;
+  }
+
+  .date-badge {
+    background: var(--naranja);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 20px;
+    border-radius: 0 0 20px 20px;
+    text-align: center;
+    letter-spacing: 0.3px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--gris);
+    padding: 20px 20px 10px;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 0 20px 12px;
+  }
+  .menu-grid.single { grid-template-columns: 1fr; }
+
+  .menu-btn {
+    background: var(--blanco);
+    border: 2px solid transparent;
+    border-radius: var(--radio);
+    padding: 20px 16px;
+    cursor: pointer;
+    text-align: left;
+    box-shadow: var(--sombra);
+    transition: all 0.18s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .menu-btn:active { transform: scale(0.97); }
+  .menu-btn.accent {
+    background: linear-gradient(135deg, var(--verde) 0%, var(--verde-claro) 100%);
+    color: white;
+  }
+  .menu-btn.accent-orange {
+    background: linear-gradient(135deg, var(--naranja) 0%, #f4a261 100%);
+    color: white;
+  }
+  .menu-btn .btn-icon { font-size: 28px; }
+  .menu-btn .btn-label {
+    font-weight: 700;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  .menu-btn .btn-desc {
+    font-size: 12px;
+    opacity: 0.7;
+    font-weight: 400;
+  }
+
+  /* ── SYNC STATUS ── */
+  .sync-bar {
+    margin: 0 20px 20px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+  .sync-bar.ok { background: var(--verde-suave); color: var(--verde); }
+  .sync-bar.pending { background: var(--naranja-suave); color: var(--naranja); }
+  .sync-bar .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sync-bar.ok .dot { background: var(--verde); }
+  .sync-bar.pending .dot { background: var(--naranja); animation: pulse 1.2s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+  }
+
+  /* ── FORMULARIOS ── */
+  .form-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  .field-input, .field-select, .field-textarea {
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-family: 'Lato', sans-serif;
+    color: var(--texto);
+    width: 100%;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .field-input:focus, .field-select:focus, .field-textarea:focus {
+    outline: none;
+    border-color: var(--verde-claro);
+  }
+  .field-textarea { min-height: 80px; resize: none; }
+
+  .tienda-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .tienda-btn {
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 10px;
+    cursor: pointer;
+    text-align: center;
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gris);
+    transition: all 0.15s;
+    line-height: 1.3;
+  }
+  .tienda-btn.selected {
+    background: var(--verde-suave);
+    border-color: var(--verde);
+    color: var(--verde);
+  }
+  .tienda-btn .tienda-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+
+  .importe-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .btn-submit {
+    background: linear-gradient(135deg, var(--verde) 0%, var(--verde-claro) 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radio);
+    padding: 18px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Lato', sans-serif;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: var(--sombra);
+    transition: all 0.18s;
+    letter-spacing: 0.3px;
+  }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit.orange {
+    background: linear-gradient(135deg, var(--naranja) 0%, #f4a261 100%);
+  }
+  .btn-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* ── CÁMARA ── */
+  .camera-area {
+    margin: 20px;
+    border-radius: var(--radio);
+    overflow: hidden;
+    background: #111;
+    position: relative;
+    aspect-ratio: 3/4;
+  }
+  #cameraVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  #photoPreview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: none;
+  }
+  .camera-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    font-size: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+  .camera-overlay .cam-icon { font-size: 48px; }
+
+  .camera-controls {
+    padding: 0 20px;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .btn-cam {
+    flex: 1;
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Lato', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn-cam.primary {
+    background: var(--naranja);
+    border-color: var(--naranja);
+    color: white;
+  }
+
+  /* OCR resultado */
+  .ocr-result {
+    margin: 0 20px;
+    background: var(--verde-suave);
+    border-radius: var(--radio);
+    padding: 16px;
+    font-size: 13px;
+    border: 1.5px solid var(--verde-claro);
+  }
+  .ocr-result h4 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--verde);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .ocr-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(45,106,79,0.1);
+    font-size: 14px;
+  }
+  .ocr-field:last-child { border-bottom: none; }
+  .ocr-field span:first-child { color: var(--gris); font-weight: 400; }
+  .ocr-field span:last-child { font-weight: 700; color: var(--texto); }
+
+  /* ── HISTORIAL ── */
+  .historial-filtros {
+    padding: 16px 20px 8px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filtro-btn {
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Lato', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    color: var(--gris);
+  }
+  .filtro-btn.active {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: white;
+  }
+
+  .lista-items { padding: 8px 20px 20px; display: flex; flex-direction: column; gap: 10px; }
+
+  .item-card {
+    background: var(--blanco);
+    border-radius: var(--radio);
+    padding: 14px 16px;
+    box-shadow: var(--sombra);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .item-tipo-dot {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .item-tipo-dot.factura { background: var(--naranja-suave); }
+  .item-tipo-dot.venta { background: var(--verde-suave); }
+  .item-tipo-dot.gasto { background: #fce4ec; }
+
+  .item-info { flex: 1; min-width: 0; }
+  .item-titulo {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .item-meta {
+    font-size: 12px;
+    color: var(--gris);
+    display: flex;
+    gap: 8px;
+  }
+  .item-tienda-tag {
+    background: var(--gris-claro);
+    border-radius: 6px;
+    padding: 1px 6px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .item-importe {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--verde);
+    flex-shrink: 0;
+    text-align: right;
+  }
+  .item-importe.gasto { color: var(--rojo); }
+  .item-synced { font-size: 10px; color: var(--verde-claro); }
+
+  /* ── RESUMEN ── */
+  .resumen-mes-selector {
+    padding: 16px 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mes-nav {
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 18px;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+  }
+  .mes-label {
+    flex: 1;
+    text-align: center;
+    font-weight: 700;
+    font-size: 17px;
+    font-family: 'Playfair Display', serif;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 16px 20px 8px;
+  }
+  .stat-card {
+    background: var(--blanco);
+    border-radius: var(--radio);
+    padding: 16px;
+    box-shadow: var(--sombra);
+  }
+  .stat-card.full { grid-column: 1 / -1; }
+  .stat-card.verde { background: linear-gradient(135deg, var(--verde) 0%, var(--verde-claro) 100%); color: white; }
+  .stat-card.naranja { background: linear-gradient(135deg, var(--naranja) 0%, #f4a261 100%); color: white; }
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    opacity: 0.75;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: 900;
+    font-family: 'Playfair Display', serif;
+    line-height: 1;
+  }
+  .stat-value.small { font-size: 18px; }
+  .stat-sub { font-size: 11px; opacity: 0.7; margin-top: 4px; }
+
+  .tienda-breakdown {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .tienda-row {
+    background: var(--blanco);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--sombra);
+  }
+  .tienda-row-name { font-weight: 700; font-size: 14px; }
+  .tienda-row-sub { font-size: 12px; color: var(--gris); }
+  .tienda-row-total { font-size: 20px; font-weight: 900; color: var(--verde); font-family: 'Playfair Display', serif; }
+
+  .proveedores-lista {
+    padding: 0 20px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .proveedor-row {
+    background: var(--blanco);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--sombra);
+  }
+  .proveedor-name { font-weight: 700; font-size: 15px; }
+  .proveedor-facturas { font-size: 12px; color: var(--gris); }
+  .proveedor-total { font-size: 18px; font-weight: 700; color: var(--naranja); font-family: 'Playfair Display', serif; }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--texto);
+    color: white;
+    padding: 14px 24px;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: var(--sombra-fuerte);
+    z-index: 999;
+    transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+    white-space: nowrap;
+    max-width: 90vw;
+    text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.ok { background: var(--verde); }
+  .toast.error { background: var(--rojo); }
+
+  /* ── LOADING ── */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(254,250,224,0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 998;
+    gap: 16px;
+  }
+  .loading-overlay.hidden { display: none; }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 4px solid var(--verde-suave);
+    border-top-color: var(--verde);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    color: var(--verde);
+    font-weight: 700;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 48px 32px;
+    color: var(--gris);
+  }
+  .empty-state .empty-icon { font-size: 56px; margin-bottom: 16px; }
+  .empty-state h3 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--texto); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; line-height: 1.5; }
+
+  /* ── SCROLL PADDING ── */
+  .scroll-content { padding-bottom: 32px; }
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="loading-overlay hidden" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Guardando...</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: HOME
+════════════════════════════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="home-hero">
+    <div class="logo">🛒</div>
+    <h1>HCarmen</h1>
+    <p>Control de tiendas</p>
+  </div>
+  <div class="date-badge" id="fechaHoy"></div>
+
+  <div class="section-label">Registrar</div>
+  <div class="menu-grid">
+    <button class="menu-btn accent-orange" onclick="navTo('screen-factura')">
+      <span class="btn-icon">📷</span>
+      <span class="btn-label">Escanear Factura</span>
+      <span class="btn-desc">Foto de albarán o ticket</span>
+    </button>
+    <button class="menu-btn accent" onclick="navTo('screen-ventas')">
+      <span class="btn-icon">💰</span>
+      <span class="btn-label">Ventas del Día</span>
+      <span class="btn-desc">Efectivo y tarjeta</span>
+    </button>
+  </div>
+  <div class="menu-grid single">
+    <button class="menu-btn" onclick="navTo('screen-gasto')">
+      <span class="btn-icon">🧾</span>
+      <span class="btn-label">Gasto Manual</span>
+      <span class="btn-desc">Alquiler, gasolina, suministros…</span>
+    </button>
+  </div>
+
+  <div class="section-label">Consultar</div>
+  <div class="menu-grid">
+    <button class="menu-btn" onclick="navTo('screen-resumen')">
+      <span class="btn-icon">📊</span>
+      <span class="btn-label">Resumen Mensual</span>
+      <span class="btn-desc">Beneficio real</span>
+    </button>
+    <button class="menu-btn" onclick="navTo('screen-historial')">
+      <span class="btn-icon">🕐</span>
+      <span class="btn-label">Historial</span>
+      <span class="btn-desc">Todos los registros</span>
+    </button>
+  </div>
+  <div class="menu-grid single">
+    <button class="menu-btn" onclick="navTo('screen-proveedores')">
+      <span class="btn-icon">🚚</span>
+      <span class="btn-label">Compras por Proveedor</span>
+      <span class="btn-desc">Cuánto gastamos con cada uno</span>
+    </button>
+  </div>
+
+  <div id="syncBarHome" class="sync-bar ok" style="margin-top:4px;">
+    <div class="dot"></div>
+    <span id="syncBarText">Todo sincronizado</span>
+    <button id="btnReintentar" onclick="reintentarPendientes()" style="display:none;margin-left:auto;background:var(--naranja);color:white;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">Reintentar</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: ESCANEAR FACTURA
+════════════════════════════════════════ -->
+<div class="screen" id="screen-factura">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Escanear Factura</div>
+        <div class="header-subtitle">Foto al albarán o ticket</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <div class="camera-area" id="cameraArea">
+      <video id="cameraVideo" playsinline autoplay muted></video>
+      <img id="photoPreview" alt="Foto capturada">
+      <div class="camera-overlay" id="cameraOverlay">
+        <div class="cam-icon">📷</div>
+        <div>Pulsa <strong>"Abrir Cámara"</strong><br>para hacer la foto</div>
+      </div>
+    </div>
+
+    <div class="camera-controls">
+      <button class="btn-cam" id="btnGaleria" onclick="abrirGaleria()">🖼 Galería</button>
+      <button class="btn-cam primary" id="btnCamara" onclick="toggleCamara()">📷 Abrir Cámara</button>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="cargarImagen(event)">
+
+    <div id="ocrResultDiv" style="display:none">
+      <div class="ocr-result">
+        <h4>✨ Detectado automáticamente</h4>
+        <div class="ocr-field"><span>Tipo</span><span id="ocrTipo">—</span></div>
+        <div class="ocr-field"><span>Proveedor</span><span id="ocrProveedor">—</span></div>
+        <div class="ocr-field"><span>Importe</span><span id="ocrImporte">—</span></div>
+      </div>
+    </div>
+
+    <div class="form-body">
+      <div class="field-group">
+        <div class="field-label">Tienda</div>
+        <div class="tienda-selector">
+          <button class="tienda-btn" id="tiendaBtn1" onclick="selTienda('tienda1')">
+            <span class="tienda-icon">🏪</span>San Asturio
+          </button>
+          <button class="tienda-btn" id="tiendaBtn2" onclick="selTienda('tienda2')">
+            <span class="tienda-icon">🏬</span>Juan de Guzmán
+          </button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Proveedor</div>
+        <input type="text" class="field-input" id="factProveedor" placeholder="Nombre del proveedor">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Tipo de documento</div>
+        <select class="field-select" id="factTipo">
+          <option value="albaran">Albarán</option>
+          <option value="factura">Factura</option>
+          <option value="ticket">Ticket</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Importe total (€)</div>
+        <input type="number" class="field-input" id="factImporte" placeholder="0.00" step="0.01" min="0">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Fecha</div>
+        <input type="date" class="field-input" id="factFecha">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Notas (opcional)</div>
+        <textarea class="field-textarea" id="factNotas" placeholder="Observaciones..."></textarea>
+      </div>
+
+      <button class="btn-submit orange" onclick="guardarFactura()">✓ Guardar Factura</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: VENTAS DEL DÍA
+════════════════════════════════════════ -->
+<div class="screen" id="screen-ventas">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Ventas del Día</div>
+        <div class="header-subtitle">Registro de caja</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <div class="form-body">
+      <div class="field-group">
+        <div class="field-label">Tienda</div>
+        <div class="tienda-selector">
+          <button class="tienda-btn" id="vTiendaBtn1" onclick="selVTienda('tienda1')">
+            <span class="tienda-icon">🏪</span>San Asturio
+          </button>
+          <button class="tienda-btn" id="vTiendaBtn2" onclick="selVTienda('tienda2')">
+            <span class="tienda-icon">🏬</span>Juan de Guzmán
+          </button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Fecha</div>
+        <input type="date" class="field-input" id="ventaFecha">
+      </div>
+
+      <div class="importe-row">
+        <div class="field-group">
+          <div class="field-label">💵 Efectivo (€)</div>
+          <input type="number" class="field-input" id="ventaEfectivo" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
+        </div>
+        <div class="field-group">
+          <div class="field-label">💳 Tarjeta (€)</div>
+          <input type="number" class="field-input" id="ventaTarjeta" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
+        </div>
+      </div>
+
+      <div class="stat-card verde">
+        <div class="stat-label">Total del Día</div>
+        <div class="stat-value" id="totalDiaDisplay">0,00 €</div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Notas (opcional)</div>
+        <textarea class="field-textarea" id="ventaNotas" placeholder="Día festivo, incidencia..."></textarea>
+      </div>
+
+      <button class="btn-submit" onclick="guardarVenta()">✓ Guardar Ventas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: GASTO MANUAL
+════════════════════════════════════════ -->
+<div class="screen" id="screen-gasto">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Gasto Manual</div>
+        <div class="header-subtitle">Sin factura o en efectivo</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <div class="form-body">
+      <div class="field-group">
+        <div class="field-label">Tienda</div>
+        <div class="tienda-selector">
+          <button class="tienda-btn" id="gTiendaBtn1" onclick="selGTienda('tienda1')">
+            <span class="tienda-icon">🏪</span>San Asturio
+          </button>
+          <button class="tienda-btn" id="gTiendaBtn2" onclick="selGTienda('tienda2')">
+            <span class="tienda-icon">🏬</span>Juan de Guzmán
+          </button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Concepto</div>
+        <input type="text" class="field-input" id="gastoConcepto" placeholder="Ej: Alquiler, gasolina furgoneta...">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Categoría</div>
+        <select class="field-select" id="gastoCat">
+          <option value="Alquiler">🏠 Alquiler</option>
+          <option value="Transporte/Gasolina">🚗 Transporte/Gasolina</option>
+          <option value="Suministros">💡 Suministros (luz, agua...)</option>
+          <option value="Personal">👤 Personal / Nóminas</option>
+          <option value="Material">📦 Material / Bolsas</option>
+          <option value="Reparaciones">🔧 Reparaciones</option>
+          <option value="Otros">📋 Otros</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Importe (€)</div>
+        <input type="number" class="field-input" id="gastoImporte" placeholder="0.00" step="0.01" min="0">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Fecha</div>
+        <input type="date" class="field-input" id="gastoFecha">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Notas (opcional)</div>
+        <textarea class="field-textarea" id="gastoNotas" placeholder="Detalles..."></textarea>
+      </div>
+
+      <button class="btn-submit orange" onclick="guardarGasto()">✓ Guardar Gasto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: HISTORIAL
+════════════════════════════════════════ -->
+<div class="screen" id="screen-historial">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Historial</div>
+        <div class="header-subtitle">Todos los registros</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="historial-filtros">
+    <button class="filtro-btn active" onclick="filtrarHistorial('todo', this)">Todo</button>
+    <button class="filtro-btn" onclick="filtrarHistorial('venta', this)">Ventas</button>
+    <button class="filtro-btn" onclick="filtrarHistorial('factura', this)">Facturas</button>
+    <button class="filtro-btn" onclick="filtrarHistorial('gasto', this)">Gastos</button>
+    <button class="filtro-btn" onclick="filtrarHistorial('tienda1', this)">San Asturio</button>
+    <button class="filtro-btn" onclick="filtrarHistorial('tienda2', this)">Juan de Guzmán</button>
+  </div>
+
+  <div class="lista-items" id="historialLista"></div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: RESUMEN MENSUAL
+════════════════════════════════════════ -->
+<div class="screen" id="screen-resumen">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Resumen Mensual</div>
+        <div class="header-subtitle">Rentabilidad real</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <div class="resumen-mes-selector">
+      <button class="mes-nav" onclick="cambiarMes(-1)">◀</button>
+      <div class="mes-label" id="mesLabel"></div>
+      <button class="mes-nav" onclick="cambiarMes(1)">▶</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card verde full">
+        <div class="stat-label">Ventas Totales</div>
+        <div class="stat-value" id="rVentas">0,00 €</div>
+        <div class="stat-sub" id="rVentasSub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💵 Efectivo</div>
+        <div class="stat-value small" id="rEfectivo">0 €</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">💳 Tarjeta</div>
+        <div class="stat-value small" id="rTarjeta">0 €</div>
+      </div>
+      <div class="stat-card naranja full">
+        <div class="stat-label">Compras a Proveedores</div>
+        <div class="stat-value" id="rCompras">0,00 €</div>
+        <div class="stat-sub" id="rComprasSub"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">🧾 Gastos Extra</div>
+        <div class="stat-value small" id="rGastos">0 €</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">📦 Total Costes</div>
+        <div class="stat-value small" id="rTotalCostes">0 €</div>
+      </div>
+    </div>
+
+    <div id="beneficioCard" class="stats-grid">
+      <div class="stat-card full" id="beneficioCardInner">
+        <div class="stat-label">Beneficio Estimado</div>
+        <div class="stat-value" id="rBeneficio">0,00 €</div>
+        <div class="stat-sub" id="rMargen"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Por Tienda</div>
+    <div class="tienda-breakdown" id="tiendaBreakdown"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: PROVEEDORES
+════════════════════════════════════════ -->
+<div class="screen" id="screen-proveedores">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Compras por Proveedor</div>
+        <div class="header-subtitle">Resumen de facturas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <div class="resumen-mes-selector">
+      <button class="mes-nav" onclick="cambiarMesProv(-1)">◀</button>
+      <div class="mes-label" id="mesLabelProv"></div>
+      <button class="mes-nav" onclick="cambiarMesProv(1)">▶</button>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card naranja full">
+        <div class="stat-label">Total compras este mes</div>
+        <div class="stat-value" id="provTotalMes">0,00 €</div>
+        <div class="stat-sub" id="provFacturasMes"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Detalle por proveedor</div>
+    <div class="proveedores-lista" id="proveedoresLista"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════ -->
+<script>
+// ── CONFIGURACIÓN ──
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
+
+// ── ESTADO ──
+let tiendaFact = null;
+let tiendaVenta = null;
+let tiendaGasto = null;
+let cameraStream = null;
+let fotoBase64 = null;
+let mesActual = new Date();
+let mesActualProv = new Date();
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ── NAVEGACIÓN ──
+let screenStack = ['screen-home'];
+
+function navTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (screenStack[screenStack.length-1] !== id) screenStack.push(id);
+  window.scrollTo(0,0);
+  onScreenEnter(id);
+}
+
+function navBack() {
+  stopCamera();
+  screenStack.pop();
+  const prev = screenStack[screenStack.length-1] || 'screen-home';
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(prev).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function onScreenEnter(id) {
+  if (id === 'screen-historial') renderHistorial('todo');
+  if (id === 'screen-resumen') renderResumen();
+  if (id === 'screen-proveedores') renderProveedores();
+  if (id === 'screen-factura') { setFechaHoy('factFecha'); tiendaFact = null; }
+  if (id === 'screen-ventas') { setFechaHoy('ventaFecha'); tiendaVenta = null; calcTotal(); resetTiendaBtns('v'); }
+  if (id === 'screen-gasto') { setFechaHoy('gastoFecha'); tiendaGasto = null; resetTiendaBtns('g'); }
+}
+
+// ── FECHA ──
+function setFechaHoy(id) {
+  const hoy = new Date();
+  document.getElementById(id).value = hoy.toISOString().split('T')[0];
+}
+
+function formatFecha(str) {
+  if (!str) return '—';
+  const [y,m,d] = str.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function fmtEur(n) {
+  return (n||0).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', async () => {
+  const hoy = new Date();
+  document.getElementById('fechaHoy').textContent = hoy.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  updateSyncBar();
+
+  // Cargar datos desde Google Sheets (si hay conexión)
+  await cargarDatosDesdeSheet();
+
+  // Reintentar pendientes de sesiones anteriores
+  await reintentarPendientes();
+});
+
+// ── SELECCIÓN TIENDA ──
+function resetTiendaBtns(prefix) {
+  document.getElementById(prefix+'TiendaBtn1').classList.remove('selected');
+  document.getElementById(prefix+'TiendaBtn2').classList.remove('selected');
+}
+
+function selTienda(t) {
+  tiendaFact = t;
+  document.getElementById('tiendaBtn1').classList.toggle('selected', t==='tienda1');
+  document.getElementById('tiendaBtn2').classList.toggle('selected', t==='tienda2');
+}
+function selVTienda(t) {
+  tiendaVenta = t;
+  document.getElementById('vTiendaBtn1').classList.toggle('selected', t==='tienda1');
+  document.getElementById('vTiendaBtn2').classList.toggle('selected', t==='tienda2');
+}
+function selGTienda(t) {
+  tiendaGasto = t;
+  document.getElementById('gTiendaBtn1').classList.toggle('selected', t==='tienda1');
+  document.getElementById('gTiendaBtn2').classList.toggle('selected', t==='tienda2');
+}
+
+// ── CÁLCULO TOTAL VENTAS ──
+function calcTotal() {
+  const ef = parseFloat(document.getElementById('ventaEfectivo').value)||0;
+  const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
+  document.getElementById('totalDiaDisplay').textContent = fmtEur(ef+tj);
+}
+
+// ── CÁMARA ──
+async function toggleCamara() {
+  if (cameraStream) {
+    stopCamera();
+    return;
+  }
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+    const video = document.getElementById('cameraVideo');
+    video.srcObject = cameraStream;
+    video.style.display = 'block';
+    document.getElementById('photoPreview').style.display = 'none';
+    document.getElementById('cameraOverlay').style.display = 'none';
+    document.getElementById('btnCamara').textContent = '📸 Hacer Foto';
+    document.getElementById('btnCamara').onclick = hacerFoto;
+  } catch(e) {
+    showToast('No se puede acceder a la cámara. Usa Galería.', 'error');
+  }
+}
+
+function hacerFoto() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  fotoBase64 = canvas.toDataURL('image/jpeg', 0.85);
+  mostrarFoto(fotoBase64);
+  stopCamera();
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('btnCamara').textContent = '📷 Abrir Cámara';
+  document.getElementById('btnCamara').onclick = toggleCamara;
+}
+
+function abrirGaleria() { document.getElementById('fileInput').click(); }
+
+function cargarImagen(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    fotoBase64 = ev.target.result;
+    mostrarFoto(fotoBase64);
+  };
+  reader.readAsDataURL(file);
+}
+
+function mostrarFoto(src) {
+  const preview = document.getElementById('photoPreview');
+  preview.src = src;
+  preview.style.display = 'block';
+  document.getElementById('cameraVideo').style.display = 'none';
+  document.getElementById('cameraOverlay').style.display = 'none';
+  // No usamos OCR local — mostramos mensaje de que la IA analizará al guardar
+  document.getElementById('ocrResultDiv').style.display = 'block';
+  document.getElementById('ocrTipo').textContent = 'Se detectará al guardar';
+  document.getElementById('ocrProveedor').textContent = 'Rellena manualmente por ahora';
+  document.getElementById('ocrImporte').textContent = '—';
+}
+
+// ── STORAGE LOCAL ──
+function getId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2,5);
+}
+
+function getStorage(key) {
+  try { return JSON.parse(localStorage.getItem(key)) || []; }
+  catch { return []; }
+}
+function setStorage(key, data) {
+  localStorage.setItem(key, JSON.stringify(data));
+}
+
+// ── GUARDAR FACTURA ──
+async function guardarFactura() {
+  if (!tiendaFact) { showToast('Selecciona una tienda', 'error'); return; }
+  const proveedor = document.getElementById('factProveedor').value.trim();
+  const importe = parseFloat(document.getElementById('factImporte').value);
+  if (!proveedor) { showToast('Indica el proveedor', 'error'); return; }
+  if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
+
+  const factura = {
+    id: getId(),
+    syncId: getId(),
+    fecha: document.getElementById('factFecha').value,
+    proveedor,
+    tipo: document.getElementById('factTipo').value,
+    importeTotal: importe,
+    tienda: tiendaFact,
+    notas: document.getElementById('factNotas').value.trim(),
+    synced: false
+  };
+
+  showLoading('Guardando factura...');
+  const facturas = getStorage('hcarmen_facturas');
+  facturas.push(factura);
+  setStorage('hcarmen_facturas', facturas);
+
+  const ok = await syncData('addFactura', {factura: {...factura, tienda: nombreTienda(factura.tienda)}});
+  if (ok) {
+    factura.synced = true;
+    setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
+  }
+
+  hideLoading();
+  showToast(ok ? '✓ Factura guardada y sincronizada' : '✓ Guardada (se sincronizará después)', ok ? 'ok' : '');
+  resetFormFactura();
+  navBack();
+}
+
+// ── GUARDAR VENTA ──
+async function guardarVenta() {
+  if (!tiendaVenta) { showToast('Selecciona una tienda', 'error'); return; }
+  const ef = parseFloat(document.getElementById('ventaEfectivo').value)||0;
+  const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
+  if (ef + tj <= 0) { showToast('Introduce al menos un importe', 'error'); return; }
+
+  const venta = {
+    id: getId(),
+    syncId: getId(),
+    fecha: document.getElementById('ventaFecha').value,
+    tienda: tiendaVenta,
+    efectivo: ef,
+    tarjeta: tj,
+    total: ef + tj,
+    notas: document.getElementById('ventaNotas').value.trim(),
+    synced: false
+  };
+
+  showLoading('Guardando ventas...');
+  const ventas = getStorage('hcarmen_ventas');
+  ventas.push(venta);
+  setStorage('hcarmen_ventas', ventas);
+
+  const ok = await syncData('addVenta', {venta: {...venta, tienda: nombreTienda(venta.tienda)}});
+  if (ok) {
+    setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(v => v.id===venta.id ? {...v, synced:true} : v));
+  }
+
+  hideLoading();
+  showToast(ok ? '✓ Ventas guardadas y sincronizadas' : '✓ Guardadas (se sincronizarán después)', ok ? 'ok' : '');
+  resetFormVenta();
+  navBack();
+}
+
+// ── GUARDAR GASTO ──
+async function guardarGasto() {
+  if (!tiendaGasto) { showToast('Selecciona una tienda', 'error'); return; }
+  const concepto = document.getElementById('gastoConcepto').value.trim();
+  const importe = parseFloat(document.getElementById('gastoImporte').value);
+  if (!concepto) { showToast('Indica el concepto', 'error'); return; }
+  if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
+
+  const gasto = {
+    id: getId(),
+    syncId: getId(),
+    fecha: document.getElementById('gastoFecha').value,
+    concepto,
+    tienda: tiendaGasto,
+    importe,
+    categoria: document.getElementById('gastoCat').value,
+    notas: document.getElementById('gastoNotas').value.trim(),
+    synced: false
+  };
+
+  showLoading('Guardando gasto...');
+  const gastos = getStorage('hcarmen_gastos');
+  gastos.push(gasto);
+  setStorage('hcarmen_gastos', gastos);
+
+  const ok = await syncData('addGasto', {gasto: {...gasto, tienda: nombreTienda(gasto.tienda)}});
+  if (ok) {
+    setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(g => g.id===gasto.id ? {...g, synced:true} : g));
+  }
+
+  hideLoading();
+  showToast(ok ? '✓ Gasto guardado y sincronizado' : '✓ Guardado (se sincronizará después)', ok ? 'ok' : '');
+  resetFormGasto();
+  navBack();
+}
+
+// ── SINCRONIZACIÓN GOOGLE SHEETS ──
+
+// Enviar dato al Sheet (POST)
+async function syncData(action, payload) {
+  try {
+    // Google Apps Script con no-cors: los datos llegan aunque no podamos leer la respuesta.
+    // Es la única forma fiable desde un archivo HTML local o GitHub Pages.
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain'}, // no-cors solo admite text/plain
+      body: JSON.stringify({action, ...payload})
+    });
+    return true;
+  } catch(e) {
+    console.warn('[SYNC] Error de red:', e);
+    return false;
+  }
+}
+
+// Cargar datos desde Google Sheets al iniciar (GET)
+async function cargarDatosDesdeSheet() {
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll', {
+      method: 'GET',
+      mode: 'cors'
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // Solo importamos si el Sheet tiene datos más recientes
+    if (data.facturas && Array.isArray(data.facturas) && data.facturas.length > 0) {
+      const local = getStorage('hcarmen_facturas');
+      const localIds = new Set(local.map(f => f.syncId));
+      const nuevas = data.facturas
+        .filter(f => f.syncId && !localIds.has(f.syncId))
+        .map(f => ({
+          id: f.syncId,
+          syncId: f.syncId,
+          fecha: typeof f.fecha === 'object' ? f.fecha.toISOString?.().split('T')[0] : String(f.fecha),
+          proveedor: f.proveedor || '',
+          tipo: f.tipo || 'factura',
+          importeTotal: parseFloat(f.importe) || 0,
+          tienda: f.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
+          notas: f.notas || '',
+          synced: true
+        }));
+      if (nuevas.length > 0) setStorage('hcarmen_facturas', [...local, ...nuevas]);
+    }
+
+    if (data.ventas && Array.isArray(data.ventas) && data.ventas.length > 0) {
+      const local = getStorage('hcarmen_ventas');
+      const localIds = new Set(local.map(v => v.syncId));
+      const nuevas = data.ventas
+        .filter(v => v.syncId && !localIds.has(v.syncId))
+        .map(v => ({
+          id: v.syncId,
+          syncId: v.syncId,
+          fecha: typeof v.fecha === 'object' ? v.fecha.toISOString?.().split('T')[0] : String(v.fecha),
+          tienda: v.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
+          efectivo: parseFloat(v.efectivo) || 0,
+          tarjeta: parseFloat(v.tarjeta) || 0,
+          total: parseFloat(v.total) || 0,
+          notas: v.notas || '',
+          synced: true
+        }));
+      if (nuevas.length > 0) setStorage('hcarmen_ventas', [...local, ...nuevas]);
+    }
+
+    if (data.gastos && Array.isArray(data.gastos) && data.gastos.length > 0) {
+      const local = getStorage('hcarmen_gastos');
+      const localIds = new Set(local.map(g => g.syncId));
+      const nuevas = data.gastos
+        .filter(g => g.syncId && !localIds.has(g.syncId))
+        .map(g => ({
+          id: g.syncId,
+          syncId: g.syncId,
+          fecha: typeof g.fecha === 'object' ? g.fecha.toISOString?.().split('T')[0] : String(g.fecha),
+          concepto: g.concepto || '',
+          tienda: g.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
+          importe: parseFloat(g.importe) || 0,
+          categoria: g.categoria || 'Otros',
+          notas: g.notas || '',
+          synced: true
+        }));
+      if (nuevas.length > 0) setStorage('hcarmen_gastos', [...local, ...nuevas]);
+    }
+
+    console.log('[SYNC] Datos cargados desde Google Sheets correctamente');
+    updateSyncBar();
+  } catch(e) {
+    // Sin conexión o CORS bloqueado — trabajamos en modo local
+    console.warn('[SYNC] No se pudo cargar desde Sheet (modo offline):', e.message);
+  }
+}
+
+// Reintentar sincronización de pendientes
+async function reintentarPendientes() {
+  const facturas = getStorage('hcarmen_facturas').filter(f => !f.synced);
+  const ventas = getStorage('hcarmen_ventas').filter(v => !v.synced);
+  const gastos = getStorage('hcarmen_gastos').filter(g => !g.synced);
+
+  for (const f of facturas) {
+    const ok = await syncData('addFactura', {factura: {...f, tienda: nombreTienda(f.tienda), importe: f.importeTotal}});
+    if (ok) setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x => x.id===f.id ? {...x, synced:true} : x));
+  }
+  for (const v of ventas) {
+    const ok = await syncData('addVenta', {venta: {...v, tienda: nombreTienda(v.tienda)}});
+    if (ok) setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(x => x.id===v.id ? {...x, synced:true} : x));
+  }
+  for (const g of gastos) {
+    const ok = await syncData('addGasto', {gasto: {...g, tienda: nombreTienda(g.tienda)}});
+    if (ok) setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(x => x.id===g.id ? {...x, synced:true} : x));
+  }
+  updateSyncBar();
+}
+
+function updateSyncBar() {
+  const facturas = getStorage('hcarmen_facturas');
+  const ventas = getStorage('hcarmen_ventas');
+  const gastos = getStorage('hcarmen_gastos');
+  const pendientes = [...facturas, ...ventas, ...gastos].filter(x => !x.synced).length;
+  const bar = document.getElementById('syncBarHome');
+  const txt = document.getElementById('syncBarText');
+  if (!bar) return;
+  if (pendientes === 0) {
+    bar.className = 'sync-bar ok';
+    txt.textContent = 'Todo sincronizado con Google Sheets ☁️';
+    const btn = document.getElementById('btnReintentar');
+    if (btn) btn.style.display = 'none';
+  } else {
+    bar.className = 'sync-bar pending';
+    txt.textContent = `${pendientes} registro${pendientes>1?'s':''} pendiente${pendientes>1?'s':''} de sincronizar`;
+    const btn = document.getElementById('btnReintentar');
+    if (btn) btn.style.display = 'block';
+  }
+}
+
+// ── HISTORIAL ──
+function renderHistorial(filtro) {
+  const facturas = getStorage('hcarmen_facturas').map(f => ({...f, _tipo:'factura'}));
+  const ventas = getStorage('hcarmen_ventas').map(v => ({...v, _tipo:'venta'}));
+  const gastos = getStorage('hcarmen_gastos').map(g => ({...g, _tipo:'gasto'}));
+  let todos = [...facturas, ...ventas, ...gastos].sort((a,b) => b.fecha.localeCompare(a.fecha));
+
+  if (filtro === 'venta') todos = todos.filter(x => x._tipo==='venta');
+  else if (filtro === 'factura') todos = todos.filter(x => x._tipo==='factura');
+  else if (filtro === 'gasto') todos = todos.filter(x => x._tipo==='gasto');
+  else if (filtro === 'tienda1') todos = todos.filter(x => x.tienda==='tienda1');
+  else if (filtro === 'tienda2') todos = todos.filter(x => x.tienda==='tienda2');
+
+  const lista = document.getElementById('historialLista');
+  if (!todos.length) {
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>Sin registros</h3><p>Aún no hay datos para este filtro.</p></div>`;
+    return;
+  }
+
+  lista.innerHTML = todos.map(item => {
+    let icon, clase, titulo, importe, clasImporte;
+    if (item._tipo === 'factura') {
+      icon = '📦'; clase = 'factura';
+      titulo = item.proveedor || 'Sin proveedor';
+      importe = fmtEur(item.importeTotal);
+      clasImporte = 'gasto';
+    } else if (item._tipo === 'venta') {
+      icon = '💰'; clase = 'venta';
+      titulo = 'Ventas del día';
+      importe = fmtEur(item.total);
+      clasImporte = '';
+    } else {
+      icon = '🧾'; clase = 'gasto';
+      titulo = item.concepto || 'Gasto';
+      importe = fmtEur(item.importe);
+      clasImporte = 'gasto';
+    }
+    const tiendaTag = item.tienda === 'tienda1' ? 'S.Asturio' : 'J.Guzmán';
+    const syncIcon = item.synced ? '☁️' : '⏳';
+    return `<div class="item-card">
+      <div class="item-tipo-dot ${clase}">${icon}</div>
+      <div class="item-info">
+        <div class="item-titulo">${titulo}</div>
+        <div class="item-meta">
+          <span>${formatFecha(item.fecha)}</span>
+          <span class="item-tienda-tag">${tiendaTag}</span>
+        </div>
+        <div class="item-synced">${syncIcon} ${item.synced ? 'Sincronizado' : 'Pendiente'}</div>
+      </div>
+      <div class="item-importe ${clasImporte}">${importe}</div>
+    </div>`;
+  }).join('');
+}
+
+function filtrarHistorial(filtro, btn) {
+  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderHistorial(filtro);
+}
+
+// ── RESUMEN MENSUAL ──
+function cambiarMes(delta) {
+  mesActual = new Date(mesActual.getFullYear(), mesActual.getMonth() + delta, 1);
+  renderResumen();
+}
+
+function renderResumen() {
+  const y = mesActual.getFullYear();
+  const m = mesActual.getMonth();
+  document.getElementById('mesLabel').textContent = `${MESES[m]} ${y}`;
+
+  const ventas = getStorage('hcarmen_ventas').filter(v => enMes(v.fecha, y, m));
+  const facturas = getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m));
+  const gastos = getStorage('hcarmen_gastos').filter(g => enMes(g.fecha, y, m));
+
+  const totalVentas = ventas.reduce((s,v) => s+v.total, 0);
+  const totalEfectivo = ventas.reduce((s,v) => s+v.efectivo, 0);
+  const totalTarjeta = ventas.reduce((s,v) => s+v.tarjeta, 0);
+  const totalCompras = facturas.reduce((s,f) => s+f.importeTotal, 0);
+  const totalGastos = gastos.reduce((s,g) => s+g.importe, 0);
+  const totalCostes = totalCompras + totalGastos;
+  const beneficio = totalVentas - totalCostes;
+  const margen = totalVentas > 0 ? (beneficio/totalVentas*100).toFixed(1) : 0;
+
+  document.getElementById('rVentas').textContent = fmtEur(totalVentas);
+  document.getElementById('rVentasSub').textContent = `${ventas.length} día${ventas.length!==1?'s':''} registrado${ventas.length!==1?'s':''}`;
+  document.getElementById('rEfectivo').textContent = fmtEur(totalEfectivo);
+  document.getElementById('rTarjeta').textContent = fmtEur(totalTarjeta);
+  document.getElementById('rCompras').textContent = fmtEur(totalCompras);
+  document.getElementById('rComprasSub').textContent = `${facturas.length} factura${facturas.length!==1?'s':''}`;
+  document.getElementById('rGastos').textContent = fmtEur(totalGastos);
+  document.getElementById('rTotalCostes').textContent = fmtEur(totalCostes);
+  document.getElementById('rBeneficio').textContent = fmtEur(beneficio);
+  document.getElementById('rMargen').textContent = `Margen: ${margen}%`;
+
+  const bc = document.getElementById('beneficioCardInner');
+  bc.style.background = beneficio >= 0
+    ? 'linear-gradient(135deg, #2d6a4f 0%, #40916c 100%)'
+    : 'linear-gradient(135deg, #c1440e 0%, #e07a2f 100%)';
+  bc.style.color = 'white';
+
+  // Por tienda
+  const tiendas = ['tienda1','tienda2'];
+  const nombres = ['🏪 Tienda San Asturio', '🏬 Tienda Juan de Guzmán'];
+  const bd = document.getElementById('tiendaBreakdown');
+  bd.innerHTML = tiendas.map((t,i) => {
+    const tv = ventas.filter(v=>v.tienda===t).reduce((s,v)=>s+v.total,0);
+    const tc = facturas.filter(f=>f.tienda===t).reduce((s,f)=>s+f.importeTotal,0);
+    const tg = gastos.filter(g=>g.tienda===t).reduce((s,g)=>s+g.importe,0);
+    const tb = tv - tc - tg;
+    return `<div class="tienda-row">
+      <div>
+        <div class="tienda-row-name">${nombres[i]}</div>
+        <div class="tienda-row-sub">Ventas: ${fmtEur(tv)} · Costes: ${fmtEur(tc+tg)}</div>
+      </div>
+      <div class="tienda-row-total" style="color:${tb>=0?'var(--verde)':'var(--rojo)'}">${fmtEur(tb)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── PROVEEDORES ──
+function cambiarMesProv(delta) {
+  mesActualProv = new Date(mesActualProv.getFullYear(), mesActualProv.getMonth() + delta, 1);
+  renderProveedores();
+}
+
+function renderProveedores() {
+  const y = mesActualProv.getFullYear();
+  const m = mesActualProv.getMonth();
+  document.getElementById('mesLabelProv').textContent = `${MESES[m]} ${y}`;
+
+  const facturas = getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m));
+  const totalMes = facturas.reduce((s,f) => s+f.importeTotal, 0);
+  document.getElementById('provTotalMes').textContent = fmtEur(totalMes);
+  document.getElementById('provFacturasMes').textContent = `${facturas.length} factura${facturas.length!==1?'s':''}`;
+
+  const byProv = {};
+  facturas.forEach(f => {
+    const p = f.proveedor || 'Sin nombre';
+    if (!byProv[p]) byProv[p] = {total:0, count:0};
+    byProv[p].total += f.importeTotal;
+    byProv[p].count++;
+  });
+
+  const sorted = Object.entries(byProv).sort((a,b) => b[1].total - a[1].total);
+  const lista = document.getElementById('proveedoresLista');
+
+  if (!sorted.length) {
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">🚚</div><h3>Sin facturas</h3><p>Registra facturas de proveedores para ver el resumen.</p></div>`;
+    return;
+  }
+
+  lista.innerHTML = sorted.map(([prov, data]) => `
+    <div class="proveedor-row">
+      <div>
+        <div class="proveedor-name">🚚 ${prov}</div>
+        <div class="proveedor-facturas">${data.count} factura${data.count!==1?'s':''}</div>
+      </div>
+      <div class="proveedor-total">${fmtEur(data.total)}</div>
+    </div>
+  `).join('');
+}
+
+// ── HELPERS ──
+function enMes(fecha, y, m) {
+  if (!fecha) return false;
+  const d = new Date(fecha);
+  return d.getFullYear() === y && d.getMonth() === m;
+}
+
+function nombreTienda(t) {
+  return t === 'tienda1' ? 'Tienda San Asturio' : 'Tienda Juan de Guzmán';
+}
+
+// ── RESETS FORMULARIOS ──
+function resetFormFactura() {
+  document.getElementById('factProveedor').value = '';
+  document.getElementById('factImporte').value = '';
+  document.getElementById('factNotas').value = '';
+  document.getElementById('factFecha').value = '';
+  document.getElementById('ocrResultDiv').style.display = 'none';
+  document.getElementById('photoPreview').style.display = 'none';
+  document.getElementById('cameraOverlay').style.display = 'flex';
+  tiendaFact = null;
+  fotoBase64 = null;
+  document.getElementById('tiendaBtn1').classList.remove('selected');
+  document.getElementById('tiendaBtn2').classList.remove('selected');
+  document.getElementById('fileInput').value = '';
+}
+
+function resetFormVenta() {
+  document.getElementById('ventaEfectivo').value = '';
+  document.getElementById('ventaTarjeta').value = '';
+  document.getElementById('ventaNotas').value = '';
+  document.getElementById('totalDiaDisplay').textContent = '0,00 €';
+  tiendaVenta = null;
+}
+
+function resetFormGasto() {
+  document.getElementById('gastoConcepto').value = '';
+  document.getElementById('gastoImporte').value = '';
+  document.getElementById('gastoNotas').value = '';
+  tiendaGasto = null;
+}
+
+// ── UI HELPERS ──
+function showLoading(txt) {
+  document.getElementById('loadingText').textContent = txt || 'Guardando...';
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+let toastTimer;
+function showToast(msg, tipo) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (tipo ? ' '+tipo : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; updateSyncBar(); }, 3000);
+}
+</script>
+</body>
+</html>
