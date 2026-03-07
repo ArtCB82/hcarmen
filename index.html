@@ -1338,79 +1338,57 @@ async function syncData(action, payload) {
   }
 }
 
-// Cargar datos desde Google Sheets al iniciar (GET)
+// Cargar datos desde Google Sheets (el Sheet manda — sincronización bidireccional)
 async function cargarDatosDesdeSheet() {
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll', {
-      method: 'GET',
-      mode: 'cors'
-    });
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll', { method: 'GET', mode: 'cors' });
     if (!res.ok) return;
     const data = await res.json();
+    if (data.error) { console.warn('[SYNC] Error del Sheet:', data.error); return; }
 
-    // Solo importamos si el Sheet tiene datos más recientes
-    if (data.facturas && Array.isArray(data.facturas) && data.facturas.length > 0) {
-      const local = getStorage('hcarmen_facturas');
-      const localIds = new Set(local.map(f => f.syncId));
-      const nuevas = data.facturas
-        .filter(f => f.syncId && !localIds.has(f.syncId))
-        .map(f => ({
-          id: f.syncId,
-          syncId: f.syncId,
-          fecha: parseFecha(f.fecha),
-          proveedor: f.proveedor || '',
-          tipo: f.tipo || 'factura',
-          importeTotal: parseFloat(f.importe) || 0,
-          tienda: f.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
-          notas: f.notas || '',
-          synced: true
-        }));
-      if (nuevas.length > 0) setStorage('hcarmen_facturas', [...local, ...nuevas]);
+    // Guardar pendientes locales para no perderlos
+    const pendientesF = getStorage('hcarmen_facturas').filter(f => !f.synced);
+    const pendientesV = getStorage('hcarmen_ventas').filter(v => !v.synced);
+    const pendientesG = getStorage('hcarmen_gastos').filter(g => !g.synced);
+
+    // Reemplazar completamente con datos del Sheet + pendientes locales
+    if (Array.isArray(data.facturas)) {
+      const delSheet = data.facturas.filter(f => f.syncId).map(f => ({
+        id: f.syncId, syncId: f.syncId,
+        fecha: parseFecha(f.fecha), proveedor: f.proveedor || '',
+        tipo: f.tipo || 'factura', importeTotal: parseFloat(f.importe) || 0,
+        tienda: f.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
+        notas: f.notas || '', synced: true
+      }));
+      const sheetIds = new Set(delSheet.map(f => f.syncId));
+      setStorage('hcarmen_facturas', [...delSheet, ...pendientesF.filter(f => !sheetIds.has(f.syncId))]);
+    }
+    if (Array.isArray(data.ventas)) {
+      const delSheet = data.ventas.filter(v => v.syncId).map(v => ({
+        id: v.syncId, syncId: v.syncId, fecha: parseFecha(v.fecha),
+        tienda: v.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
+        efectivo: parseFloat(v.efectivo)||0, tarjeta: parseFloat(v.tarjeta)||0,
+        total: parseFloat(v.total)||0, notas: v.notas||'', synced: true
+      }));
+      const sheetIds = new Set(delSheet.map(v => v.syncId));
+      setStorage('hcarmen_ventas', [...delSheet, ...pendientesV.filter(v => !sheetIds.has(v.syncId))]);
+    }
+    if (Array.isArray(data.gastos)) {
+      const delSheet = data.gastos.filter(g => g.syncId).map(g => ({
+        id: g.syncId, syncId: g.syncId, fecha: parseFecha(g.fecha),
+        concepto: g.concepto||'',
+        tienda: g.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
+        importe: parseFloat(g.importe)||0, categoria: g.categoria||'Otros',
+        notas: g.notas||'', synced: true
+      }));
+      const sheetIds = new Set(delSheet.map(g => g.syncId));
+      setStorage('hcarmen_gastos', [...delSheet, ...pendientesG.filter(g => !sheetIds.has(g.syncId))]);
     }
 
-    if (data.ventas && Array.isArray(data.ventas) && data.ventas.length > 0) {
-      const local = getStorage('hcarmen_ventas');
-      const localIds = new Set(local.map(v => v.syncId));
-      const nuevas = data.ventas
-        .filter(v => v.syncId && !localIds.has(v.syncId))
-        .map(v => ({
-          id: v.syncId,
-          syncId: v.syncId,
-          fecha: parseFecha(v.fecha),
-          tienda: v.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
-          efectivo: parseFloat(v.efectivo) || 0,
-          tarjeta: parseFloat(v.tarjeta) || 0,
-          total: parseFloat(v.total) || 0,
-          notas: v.notas || '',
-          synced: true
-        }));
-      if (nuevas.length > 0) setStorage('hcarmen_ventas', [...local, ...nuevas]);
-    }
-
-    if (data.gastos && Array.isArray(data.gastos) && data.gastos.length > 0) {
-      const local = getStorage('hcarmen_gastos');
-      const localIds = new Set(local.map(g => g.syncId));
-      const nuevas = data.gastos
-        .filter(g => g.syncId && !localIds.has(g.syncId))
-        .map(g => ({
-          id: g.syncId,
-          syncId: g.syncId,
-          fecha: parseFecha(g.fecha),
-          concepto: g.concepto || '',
-          tienda: g.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
-          importe: parseFloat(g.importe) || 0,
-          categoria: g.categoria || 'Otros',
-          notas: g.notas || '',
-          synced: true
-        }));
-      if (nuevas.length > 0) setStorage('hcarmen_gastos', [...local, ...nuevas]);
-    }
-
-    console.log('[SYNC] Datos cargados desde Google Sheets correctamente');
+    console.log('[SYNC] Sincronizacion completa con Google Sheets');
     updateSyncBar();
   } catch(e) {
-    // Sin conexión o CORS bloqueado — trabajamos en modo local
-    console.warn('[SYNC] No se pudo cargar desde Sheet (modo offline):', e.message);
+    console.warn('[SYNC] Modo offline:', e.message);
   }
 }
 
@@ -1505,9 +1483,37 @@ function renderHistorial(filtro) {
         </div>
         <div class="item-synced">${syncIcon} ${item.synced ? 'Sincronizado' : 'Pendiente'}</div>
       </div>
-      <div class="item-importe ${clasImporte}">${importe}</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <div class="item-importe ${clasImporte}">${importe}</div>
+        <button onclick="borrarRegistro('${item._tipo}','${item.id}',this)" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">🗑 Borrar</button>
+      </div>
     </div>`;
   }).join('');
+}
+
+async function borrarRegistro(tipo, id, btn) {
+  if (!confirm('¿Seguro que quieres borrar este registro? También se eliminará del Google Sheet.')) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+
+  // Borrar del localStorage
+  if (tipo === 'factura') {
+    setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').filter(x => x.id !== id));
+  } else if (tipo === 'venta') {
+    setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').filter(x => x.id !== id));
+  } else if (tipo === 'gasto') {
+    setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').filter(x => x.id !== id));
+  }
+
+  // Borrar del Sheet
+  await syncData('deleteRegistro', { tipo, syncId: id });
+
+  showToast('Registro eliminado', 'ok');
+  // Refrescar historial con el filtro activo
+  const activoBtn = document.querySelector('.filtro-btn.active');
+  const filtroActivo = activoBtn ? activoBtn.textContent.trim() : 'todo';
+  renderHistorial(filtroActivo === 'Todo' ? 'todo' : filtroActivo === 'Ventas' ? 'venta' : filtroActivo === 'Facturas' ? 'factura' : filtroActivo === 'Gastos' ? 'gasto' : 'todo');
+  updateSyncBar();
 }
 
 function filtrarHistorial(filtro, btn) {
