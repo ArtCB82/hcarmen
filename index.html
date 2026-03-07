@@ -1184,16 +1184,90 @@ function cargarImagen(e) {
   reader.readAsDataURL(file);
 }
 
-function mostrarFoto(src) {
+async function mostrarFoto(src) {
   const preview = document.getElementById('photoPreview');
   preview.src = src;
   preview.style.display = 'block';
   document.getElementById('cameraVideo').style.display = 'none';
   document.getElementById('cameraOverlay').style.display = 'none';
-  // No usamos OCR local — mostramos mensaje de que la IA analizará al guardar
+
+  // Mostrar estado analizando
   document.getElementById('ocrResultDiv').style.display = 'block';
-  document.getElementById('ocrTipo').textContent = 'Se detectará al guardar';
-  document.getElementById('ocrProveedor').textContent = 'Rellena manualmente por ahora';
+  document.getElementById('ocrTipo').textContent = '⏳ Analizando...';
+  document.getElementById('ocrProveedor').textContent = '⏳ Analizando...';
+  document.getElementById('ocrImporte').textContent = '⏳';
+
+  try {
+    // Comprimir imagen antes de enviar (máx 800px)
+    const compressed = await comprimirImagen(src, 800);
+    
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'analizarFoto', imagen: compressed })
+    });
+
+    // no-cors no devuelve respuesta — usar proxy alternativo
+    // Intentamos con fetch normal para ver si CORS lo permite en POST con text/plain
+    throw new Error('no-cors no permite leer respuesta');
+
+  } catch(e) {
+    // Fallback: llamar via GET con imagen codificada es inviable por tamaño
+    // Usamos el endpoint directamente con fetch cors
+    try {
+      const compressed = await comprimirImagen(src, 600);
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'analizarFoto', imagen: compressed })
+      });
+      const data = await res.json();
+      if (data.success && data.datos) {
+        rellenarDatosOCR(data.datos);
+      } else {
+        mostrarOCRManual();
+      }
+    } catch(e2) {
+      mostrarOCRManual();
+    }
+  }
+}
+
+async function comprimirImagen(src, maxPx) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxPx || h > maxPx) {
+        if (w > h) { h = Math.round(h * maxPx / w); w = maxPx; }
+        else { w = Math.round(w * maxPx / h); h = maxPx; }
+      }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.src = src;
+  });
+}
+
+function rellenarDatosOCR(datos) {
+  document.getElementById('ocrTipo').textContent = datos.tipo || '—';
+  document.getElementById('ocrProveedor').textContent = datos.proveedor || '—';
+  document.getElementById('ocrImporte').textContent = datos.importe ? datos.importe + ' €' : '—';
+  // Rellenar formulario automáticamente
+  if (datos.proveedor) document.getElementById('factProveedor').value = datos.proveedor;
+  if (datos.importe)   document.getElementById('factImporte').value = datos.importe;
+  if (datos.tipo)      document.getElementById('factTipo').value = datos.tipo;
+  if (datos.fecha)     document.getElementById('factFecha').value = datos.fecha;
+  showToast('✨ Datos detectados automáticamente', 'ok');
+}
+
+function mostrarOCRManual() {
+  document.getElementById('ocrTipo').textContent = 'Rellena manualmente';
+  document.getElementById('ocrProveedor').textContent = 'No se pudo detectar';
   document.getElementById('ocrImporte').textContent = '—';
 }
 
@@ -1218,9 +1292,10 @@ async function guardarFactura() {
   if (!proveedor) { showToast('Indica el proveedor', 'error'); return; }
   if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
 
+  const syncId = getId();
   const factura = {
-    id: getId(),
-    syncId: getId(),
+    id: syncId,
+    syncId: syncId,
     fecha: document.getElementById('factFecha').value,
     proveedor,
     tipo: document.getElementById('factTipo').value,
@@ -1235,9 +1310,16 @@ async function guardarFactura() {
   facturas.push(factura);
   setStorage('hcarmen_facturas', facturas);
 
-  const ok = await syncData('addFactura', {factura: {...factura, tienda: nombreTienda(factura.tienda)}});
+  const ok = await syncData('addFactura', {factura: {
+    fecha: factura.fecha,
+    proveedor: factura.proveedor,
+    tienda: nombreTienda(factura.tienda),
+    importe: factura.importeTotal,
+    tipo: factura.tipo,
+    notas: factura.notas,
+    syncId: factura.syncId
+  }});
   if (ok) {
-    factura.synced = true;
     setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
   }
 
@@ -1254,9 +1336,10 @@ async function guardarVenta() {
   const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
   if (ef + tj <= 0) { showToast('Introduce al menos un importe', 'error'); return; }
 
+  const syncIdV = getId();
   const venta = {
-    id: getId(),
-    syncId: getId(),
+    id: syncIdV,
+    syncId: syncIdV,
     fecha: document.getElementById('ventaFecha').value,
     tienda: tiendaVenta,
     efectivo: ef,
@@ -1271,7 +1354,15 @@ async function guardarVenta() {
   ventas.push(venta);
   setStorage('hcarmen_ventas', ventas);
 
-  const ok = await syncData('addVenta', {venta: {...venta, tienda: nombreTienda(venta.tienda)}});
+  const ok = await syncData('addVenta', {venta: {
+    fecha: venta.fecha,
+    tienda: nombreTienda(venta.tienda),
+    efectivo: venta.efectivo,
+    tarjeta: venta.tarjeta,
+    total: venta.total,
+    notas: venta.notas,
+    syncId: venta.syncId
+  }});
   if (ok) {
     setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(v => v.id===venta.id ? {...v, synced:true} : v));
   }
@@ -1290,9 +1381,10 @@ async function guardarGasto() {
   if (!concepto) { showToast('Indica el concepto', 'error'); return; }
   if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
 
+  const syncIdG = getId();
   const gasto = {
-    id: getId(),
-    syncId: getId(),
+    id: syncIdG,
+    syncId: syncIdG,
     fecha: document.getElementById('gastoFecha').value,
     concepto,
     tienda: tiendaGasto,
@@ -1307,7 +1399,15 @@ async function guardarGasto() {
   gastos.push(gasto);
   setStorage('hcarmen_gastos', gastos);
 
-  const ok = await syncData('addGasto', {gasto: {...gasto, tienda: nombreTienda(gasto.tienda)}});
+  const ok = await syncData('addGasto', {gasto: {
+    fecha: gasto.fecha,
+    concepto: gasto.concepto,
+    tienda: nombreTienda(gasto.tienda),
+    importe: gasto.importe,
+    categoria: gasto.categoria,
+    notas: gasto.notas,
+    syncId: gasto.syncId
+  }});
   if (ok) {
     setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(g => g.id===gasto.id ? {...g, synced:true} : g));
   }
@@ -1320,18 +1420,16 @@ async function guardarGasto() {
 
 // ── SINCRONIZACIÓN GOOGLE SHEETS ──
 
-// Enviar dato al Sheet (POST)
+// Enviar dato al Sheet via GET (evita restricciones CORS de GitHub Pages)
 async function syncData(action, payload) {
   try {
-    // Google Apps Script con no-cors: los datos llegan aunque no podamos leer la respuesta.
-    // Es la única forma fiable desde un archivo HTML local o GitHub Pages.
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type': 'text/plain'}, // no-cors solo admite text/plain
-      body: JSON.stringify({action, ...payload})
-    });
-    return true;
+    const datos = JSON.stringify({action, ...payload});
+    const encoded = encodeURIComponent(datos);
+    const url = APPS_SCRIPT_URL + '?method=post&data=' + encoded;
+    const res = await fetch(url, { method: 'GET', mode: 'cors' });
+    const result = await res.json();
+    console.log('[SYNC] Respuesta:', result);
+    return result.success === true;
   } catch(e) {
     console.warn('[SYNC] Error de red:', e);
     return false;
@@ -1399,15 +1497,24 @@ async function reintentarPendientes() {
   const gastos = getStorage('hcarmen_gastos').filter(g => !g.synced);
 
   for (const f of facturas) {
-    const ok = await syncData('addFactura', {factura: {...f, tienda: nombreTienda(f.tienda), importe: f.importeTotal}});
+    const ok = await syncData('addFactura', {factura: {
+      fecha: f.fecha, proveedor: f.proveedor, tienda: nombreTienda(f.tienda),
+      importe: f.importeTotal, tipo: f.tipo, notas: f.notas, syncId: f.syncId
+    }});
     if (ok) setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x => x.id===f.id ? {...x, synced:true} : x));
   }
   for (const v of ventas) {
-    const ok = await syncData('addVenta', {venta: {...v, tienda: nombreTienda(v.tienda)}});
+    const ok = await syncData('addVenta', {venta: {
+      fecha: v.fecha, tienda: nombreTienda(v.tienda),
+      efectivo: v.efectivo, tarjeta: v.tarjeta, total: v.total, notas: v.notas, syncId: v.syncId
+    }});
     if (ok) setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(x => x.id===v.id ? {...x, synced:true} : x));
   }
   for (const g of gastos) {
-    const ok = await syncData('addGasto', {gasto: {...g, tienda: nombreTienda(g.tienda)}});
+    const ok = await syncData('addGasto', {gasto: {
+      fecha: g.fecha, concepto: g.concepto, tienda: nombreTienda(g.tienda),
+      importe: g.importe, categoria: g.categoria, notas: g.notas, syncId: g.syncId
+    }});
     if (ok) setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(x => x.id===g.id ? {...x, synced:true} : x));
   }
   updateSyncBar();
