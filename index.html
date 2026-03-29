@@ -1191,47 +1191,44 @@ async function mostrarFoto(src) {
   document.getElementById('cameraVideo').style.display = 'none';
   document.getElementById('cameraOverlay').style.display = 'none';
 
-  // Mostrar estado analizando
   document.getElementById('ocrResultDiv').style.display = 'block';
   document.getElementById('ocrTipo').textContent = '⏳ Analizando...';
   document.getElementById('ocrProveedor').textContent = '⏳ Analizando...';
   document.getElementById('ocrImporte').textContent = '⏳';
 
   try {
-    // Comprimir imagen antes de enviar (máx 800px)
-    const compressed = await comprimirImagen(src, 800);
+    // Comprimir imagen a máx 600px para reducir tamaño
+    const compressed = await comprimirImagen(src, 600);
+
+    // Para imágenes usamos POST con no-cors y luego hacemos GET para leer el resultado
+    // Primero guardamos la imagen en el Script con un ID temporal
+    const tempId = Date.now().toString(36);
     
-    const res = await fetch(APPS_SCRIPT_URL, {
+    // Enviamos via POST no-cors (llega al servidor aunque no podamos leer respuesta)
+    await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       mode: 'no-cors',
       headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action: 'analizarFoto', imagen: compressed })
+      body: JSON.stringify({ action: 'analizarFoto', imagen: compressed, tempId })
     });
 
-    // no-cors no devuelve respuesta — usar proxy alternativo
-    // Intentamos con fetch normal para ver si CORS lo permite en POST con text/plain
-    throw new Error('no-cors no permite leer respuesta');
+    // Esperamos 4 segundos a que Claude procese
+    await new Promise(r => setTimeout(r, 4000));
 
-  } catch(e) {
-    // Fallback: llamar via GET con imagen codificada es inviable por tamaño
-    // Usamos el endpoint directamente con fetch cors
-    try {
-      const compressed = await comprimirImagen(src, 600);
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action: 'analizarFoto', imagen: compressed })
-      });
-      const data = await res.json();
-      if (data.success && data.datos) {
-        rellenarDatosOCR(data.datos);
-      } else {
-        mostrarOCRManual();
-      }
-    } catch(e2) {
+    // Leemos el resultado via GET
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getOcrResult&tempId=' + tempId, {
+      method: 'GET', mode: 'cors'
+    });
+    const data = await res.json();
+
+    if (data.success && data.datos) {
+      rellenarDatosOCR(data.datos);
+    } else {
       mostrarOCRManual();
     }
+  } catch(e) {
+    console.warn('[OCR] Error:', e);
+    mostrarOCRManual();
   }
 }
 
