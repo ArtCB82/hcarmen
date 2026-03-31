@@ -897,6 +897,26 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
+<!-- MODAL CAMBIAR PIN -->
+<div class="modal-overlay" id="modalCambiarPin" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">Cambiar PIN</div>
+    <div style="font-size:14px;color:var(--gris);margin-bottom:16px" id="cambiarPinNombre"></div>
+    <div class="field-group" style="margin-bottom:12px">
+      <div class="field-label">Nuevo PIN (4 dígitos)</div>
+      <input type="number" class="field-input" id="nuevoPinInput" placeholder="1234" maxlength="4">
+    </div>
+    <div class="field-group" style="margin-bottom:12px">
+      <div class="field-label">Confirmar PIN</div>
+      <input type="number" class="field-input" id="confirmarPinInput" placeholder="1234" maxlength="4">
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarCambiarPin()">Cancelar</button>
+      <button class="btn-submit" style="flex:1" onclick="guardarNuevoPin()">Guardar PIN</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════
      PANTALLA: HOME
 ════════════════════════════════════════ -->
@@ -910,13 +930,13 @@
 </div>
 
 <!-- PIN OVERLAY -->
-<div class="pin-overlay" id="pinOverlay" style="display:none">
+<div class="pin-overlay" id="pinOverlay" style="display:none" onkeydown="pinKeyboard(event)">
   <div class="pin-panel">
     <div class="pin-usuario-info">
       <div class="pin-avatar-small" id="pinAvatarSmall"></div>
       <div>
         <div class="pin-nombre" id="pinNombre"></div>
-        <div class="pin-hint">Introduce tu PIN</div>
+        <div class="pin-hint">Introduce tu PIN (teclado también funciona)</div>
       </div>
     </div>
     <div class="pin-dots">
@@ -2455,7 +2475,7 @@ function registrarLog(accion, detalle, tienda) {
   
   const logs = getStorage('hcarmen_log');
   logs.unshift(entrada); // más reciente primero
-  if (logs.length > 200) logs.pop(); // máx 200 entradas locales
+  if (logs.length > 300) logs.pop(); // máx 300 entradas locales
   setStorage('hcarmen_log', logs);
   
   // Sincronizar con Sheet
@@ -2487,15 +2507,23 @@ function renderAdminUsuarios() {
         <div class="usuario-row-nombre">${u.nombre}</div>
         <div class="usuario-row-meta">PIN: ${'•'.repeat(4)} · ${u.rol === 'admin' ? '<span class="tag-rol admin">Admin</span>' : '<span class="tag-rol user">Usuario</span>'} ${!u.activo ? '<span class="tag-inactivo">Inactivo</span>' : ''}</div>
       </div>
-      <button onclick="toggleUsuario('${u.id}')" style="background:${u.activo ? '#fee2e2' : '#d8f3dc'};border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:${u.activo ? '#c1440e' : '#2d6a4f'};font-family:'Lato',sans-serif">
-        ${u.activo ? 'Desactivar' : 'Activar'}
-      </button>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <button onclick="toggleUsuario('${u.id}')" style="background:${u.activo ? '#fee2e2' : '#d8f3dc'};border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;color:${u.activo ? '#c1440e' : '#2d6a4f'};font-family:'Lato',sans-serif">
+          ${u.activo ? 'Desactivar' : 'Activar'}
+        </button>
+        <button onclick="mostrarCambiarPin('${u.id}')" style="background:#e0f2fe;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#0369a1;font-family:'Lato',sans-serif">
+          Cambiar PIN
+        </button>
+        <button onclick="borrarUsuario('${u.id}')" style="background:#f3f4f6;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--gris);font-family:'Lato',sans-serif">
+          🗑 Borrar
+        </button>
+      </div>
     </div>
   `).join('');
 }
 
 function renderAdminLog() {
-  const logs = getStorage('hcarmen_log').slice(0, 50);
+  const logs = getStorage('hcarmen_log').slice(0, 100);
   const lista = document.getElementById('adminLogList');
   if (!logs.length) { lista.innerHTML = '<p style="color:var(--gris);font-size:13px">Sin actividad registrada</p>'; return; }
   lista.innerHTML = logs.map(l => {
@@ -2568,6 +2596,83 @@ async function testApiClaude() {
   }
 }
 
+
+
+// ── PIN CON TECLADO FÍSICO ──
+function pinKeyboard(e) {
+  if (e.key >= '0' && e.key <= '9') { pinKey(e.key); e.preventDefault(); }
+  else if (e.key === 'Backspace') { pinBorrar(); e.preventDefault(); }
+  else if (e.key === 'Escape') { cerrarPin(); }
+}
+
+// Activar escucha de teclado cuando se abre el PIN
+const _abrirPinOrig = window.abrirPin;
+function abrirPin(userId) {
+  const u = getUsuarios().find(x => x.id === userId);
+  if (!u) return;
+  usuarioPinTarget = u;
+  pinBuffer = '';
+  actualizarDots();
+  document.getElementById('pinAvatarSmall').style.background = u.color;
+  document.getElementById('pinAvatarSmall').textContent = iniciales(u.nombre);
+  document.getElementById('pinNombre').textContent = u.nombre;
+  const overlay = document.getElementById('pinOverlay');
+  overlay.style.display = 'flex';
+  overlay.setAttribute('tabindex', '0');
+  setTimeout(() => overlay.focus(), 100);
+}
+
+// ── BORRAR USUARIO ──
+function borrarUsuario(userId) {
+  const usuarios = getUsuarios();
+  const u = usuarios.find(x => x.id === userId);
+  if (!u) return;
+  if (u.id === usuarioActual.id) { showToast('No puedes borrarte a ti mismo', 'error'); return; }
+  if (!confirm('¿Seguro que quieres borrar el usuario "' + u.nombre + '"? Esta acción no se puede deshacer.')) return;
+  const nuevos = usuarios.filter(x => x.id !== userId);
+  setStorage('hcarmen_usuarios', nuevos);
+  registrarLog('USUARIO', 'Usuario borrado: ' + u.nombre);
+  renderAdminUsuarios();
+  showToast('Usuario ' + u.nombre + ' eliminado', 'ok');
+}
+
+// ── CAMBIAR PIN ──
+let cambiarPinUserId = null;
+
+function mostrarCambiarPin(userId) {
+  const u = getUsuarios().find(x => x.id === userId);
+  if (!u) return;
+  cambiarPinUserId = userId;
+  document.getElementById('cambiarPinNombre').textContent = 'Usuario: ' + u.nombre;
+  document.getElementById('nuevoPinInput').value = '';
+  document.getElementById('confirmarPinInput').value = '';
+  document.getElementById('modalCambiarPin').style.display = 'flex';
+}
+
+function cerrarCambiarPin() {
+  document.getElementById('modalCambiarPin').style.display = 'none';
+  cambiarPinUserId = null;
+}
+
+function guardarNuevoPin() {
+  const nuevoPin = String(document.getElementById('nuevoPinInput').value).trim();
+  const confirmarPin = String(document.getElementById('confirmarPinInput').value).trim();
+  if (nuevoPin.length !== 4 || !/^[0-9]{4}$/.test(nuevoPin)) {
+    showToast('El PIN debe tener exactamente 4 dígitos', 'error'); return;
+  }
+  if (nuevoPin !== confirmarPin) {
+    showToast('Los PINs no coinciden', 'error'); return;
+  }
+  const usuarios = getUsuarios();
+  const idx = usuarios.findIndex(u => u.id === cambiarPinUserId);
+  if (idx === -1) return;
+  const nombreU = usuarios[idx].nombre;
+  usuarios[idx].pin = nuevoPin;
+  setStorage('hcarmen_usuarios', usuarios);
+  registrarLog('USUARIO', 'PIN cambiado para: ' + nombreU);
+  cerrarCambiarPin();
+  showToast('PIN de ' + nombreU + ' actualizado', 'ok');
+}
 
 </script>
 </body>
