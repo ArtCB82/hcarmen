@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Alimentación HCarmen</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
     --verde: #2d6a4f;
@@ -1119,6 +1120,13 @@
       <span class="btn-desc">Cuánto gastamos con cada uno</span>
     </button>
   </div>
+  <div class="menu-grid single">
+    <button class="menu-btn accent" onclick="navTo('screen-estadisticas');renderEstadisticas()">
+      <span class="btn-icon">📈</span>
+      <span class="btn-label">Estadísticas Avanzadas</span>
+      <span class="btn-desc">KPIs, tendencias y comparativas</span>
+    </button>
+  </div>
 
   <div id="syncBarHome" class="sync-bar ok" style="margin-top:4px;">
     <div class="dot"></div>
@@ -1263,6 +1271,11 @@
       </div>
 
       <div class="field-group">
+        <div class="field-label">🧾 Nº de tickets/clientes (opcional)</div>
+        <input type="number" class="field-input" id="ventaTickets" placeholder="Ej: 87" min="0" step="1">
+      </div>
+
+      <div class="field-group">
         <div class="field-label">Notas (opcional)</div>
         <textarea class="field-textarea" id="ventaNotas" placeholder="Día festivo, incidencia..."></textarea>
       </div>
@@ -1348,6 +1361,89 @@
       </div>
 
       <button class="btn-submit orange" onclick="guardarGasto()">✓ Guardar Gasto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: ESTADÍSTICAS AVANZADAS
+════════════════════════════════════════ -->
+<div class="screen" id="screen-estadisticas">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Estadísticas</div>
+        <div class="header-subtitle">KPIs y análisis avanzado</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <!-- Filtros rápidos -->
+    <div style="padding:16px 20px 8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="filtro-btn active" id="fEsteAno" onclick="setFiltroStats('año')">Este año</button>
+      <button class="filtro-btn" id="fUlt12" onclick="setFiltroStats('12m')">Últ. 12 meses</button>
+      <button class="filtro-btn" id="fUlt6" onclick="setFiltroStats('6m')">Últ. 6 meses</button>
+      <button class="filtro-btn" id="fUlt3" onclick="setFiltroStats('3m')">Últ. 3 meses</button>
+      <button class="filtro-btn" id="fPersonal" onclick="setFiltroStats('custom')">📅 Personalizado</button>
+    </div>
+
+    <!-- Selector personalizado -->
+    <div id="statsCustomRange" style="display:none;padding:0 20px 8px;display:none;gap:10px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="date" class="field-input" id="statsDesde" style="flex:1">
+        <span style="color:var(--gris);font-weight:700">→</span>
+        <input type="date" class="field-input" id="statsHasta" style="flex:1">
+      </div>
+      <button class="btn-submit" style="margin-top:8px" onclick="renderEstadisticas()">Aplicar</button>
+    </div>
+
+    <!-- Filtro tienda -->
+    <div style="padding:0 20px 12px;display:flex;gap:8px">
+      <button class="filtro-btn active" id="fTiendaTodas" onclick="setFiltroTienda('todas', this)">Ambas tiendas</button>
+      <button class="filtro-btn" id="fTienda1" onclick="setFiltroTienda('tienda1', this)">San Asturio</button>
+      <button class="filtro-btn" id="fTienda2" onclick="setFiltroTienda('tienda2', this)">Juan de Guzmán</button>
+    </div>
+
+    <!-- KPIs principales -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin-bottom:10px">Resumen del período</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="kpiGrid"></div>
+    </div>
+
+    <!-- Gráfica evolución ventas -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Evolución de ventas</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">
+        <canvas id="chartVentas" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráfica margen -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Ventas vs Costes</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">
+        <canvas id="chartMargen" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- Comparativa años -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Comparativa por año</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">
+        <canvas id="chartComparativa" height="220"></canvas>
+      </div>
+      <div style="background:var(--crema-oscura);border-radius:10px;padding:10px 14px;margin-top:8px;font-size:12px;color:var(--gris)">
+        💡 El índice de inflación aplicado es del <strong id="inflacionPct">3%</strong> anual. 
+        <button onclick="cambiarInflacion()" style="background:none;border:none;color:var(--verde);font-weight:700;cursor:pointer;font-size:12px;text-decoration:underline">Cambiar</button>
+      </div>
+    </div>
+
+    <!-- KPIs detallados -->
+    <div style="padding:0 20px 20px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Análisis detallado</div>
+      <div id="kpiDetalle"></div>
     </div>
   </div>
 </div>
@@ -1850,6 +1946,7 @@ async function guardarVenta() {
   if (ef + tj <= 0) { showToast('Introduce al menos un importe', 'error'); return; }
 
   const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
+  const tickets = parseInt(document.getElementById('ventaTickets').value)||0;
   const syncIdV = getId();
   const venta = {
     id: syncIdV,
@@ -1860,6 +1957,7 @@ async function guardarVenta() {
     tarjeta: tj,
     total: ef + tj,
     fondo: fondo,
+    tickets: tickets,
     notas: document.getElementById('ventaNotas').value.trim(),
     synced: false
   };
@@ -2296,7 +2394,10 @@ function resetFormVenta() {
   document.getElementById('ventaEfectivo').value = '';
   document.getElementById('ventaTarjeta').value = '';
   document.getElementById('ventaNotas').value = '';
+  document.getElementById('ventaFondo').value = '';
+  document.getElementById('ventaTickets').value = '';
   document.getElementById('totalDiaDisplay').textContent = '0,00 €';
+  document.getElementById('cajaResumen').style.display = 'none';
   tiendaVenta = null;
 }
 
@@ -2722,6 +2823,292 @@ function guardarNuevoPin() {
   registrarLog('USUARIO', 'PIN cambiado para: ' + nombreU);
   cerrarCambiarPin();
   showToast('PIN de ' + nombreU + ' actualizado', 'ok');
+}
+
+
+// ══════════════════════════════════════════════════════
+// ESTADÍSTICAS AVANZADAS
+// ══════════════════════════════════════════════════════
+
+let statsFiltroPeriodo = 'año';
+let statsFiltroTienda = 'todas';
+let statsInflacion = 3;
+let chartVentasObj = null;
+let chartMargenObj = null;
+let chartComparativaObj = null;
+
+function setFiltroStats(periodo) {
+  statsFiltroPeriodo = periodo;
+  ['fEsteAno','fUlt12','fUlt6','fUlt3','fPersonal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  const mapId = { 'año':'fEsteAno', '12m':'fUlt12', '6m':'fUlt6', '3m':'fUlt3', 'custom':'fPersonal' };
+  const el = document.getElementById(mapId[periodo]);
+  if (el) el.classList.add('active');
+
+  const customRange = document.getElementById('statsCustomRange');
+  if (periodo === 'custom') {
+    customRange.style.display = 'flex';
+    customRange.style.flexDirection = 'column';
+  } else {
+    customRange.style.display = 'none';
+    renderEstadisticas();
+  }
+}
+
+function setFiltroTienda(tienda, btn) {
+  statsFiltroTienda = tienda;
+  document.querySelectorAll('#fTiendaTodas, #fTienda1, #fTienda2').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderEstadisticas();
+}
+
+function getRangoDates() {
+  const hoy = new Date();
+  let desde, hasta;
+  hasta = new Date(hoy);
+
+  if (statsFiltroPeriodo === 'año') {
+    desde = new Date(hoy.getFullYear(), 0, 1);
+  } else if (statsFiltroPeriodo === '12m') {
+    desde = new Date(hoy.getFullYear()-1, hoy.getMonth()+1, 1);
+  } else if (statsFiltroPeriodo === '6m') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth()-5, 1);
+  } else if (statsFiltroPeriodo === '3m') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth()-2, 1);
+  } else if (statsFiltroPeriodo === 'custom') {
+    const desdeStr = document.getElementById('statsDesde').value;
+    const hastaStr = document.getElementById('statsHasta').value;
+    if (!desdeStr || !hastaStr) return null;
+    desde = new Date(desdeStr);
+    hasta = new Date(hastaStr);
+  }
+  return { desde, hasta };
+}
+
+function filtrarPorPeriodoYTienda(arr, rango) {
+  return arr.filter(x => {
+    if (!x.fecha) return false;
+    const d = new Date(x.fecha);
+    if (d < rango.desde || d > rango.hasta) return false;
+    if (statsFiltroTienda !== 'todas' && x.tienda !== statsFiltroTienda) return false;
+    return true;
+  });
+}
+
+function getMesesEnRango(rango) {
+  const meses = [];
+  const cur = new Date(rango.desde.getFullYear(), rango.desde.getMonth(), 1);
+  while (cur <= rango.hasta) {
+    meses.push({ y: cur.getFullYear(), m: cur.getMonth() });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return meses;
+}
+
+function renderEstadisticas() {
+  const rango = getRangoDates();
+  if (!rango) return;
+
+  const ventas = filtrarPorPeriodoYTienda(getStorage('hcarmen_ventas'), rango);
+  const facturas = filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango);
+  const gastos = filtrarPorPeriodoYTienda(getStorage('hcarmen_gastos'), rango);
+
+  const totalVentas = ventas.reduce((s,v) => s+v.total, 0);
+  const totalCompras = facturas.reduce((s,f) => s+f.importeTotal, 0);
+  const totalGastos = gastos.reduce((s,g) => s+g.importe, 0);
+  const totalCostes = totalCompras + totalGastos;
+  const margenBruto = totalVentas - totalCompras;
+  const beneficio = totalVentas - totalCostes;
+  const margenPct = totalVentas > 0 ? (margenBruto/totalVentas*100) : 0;
+  const comprasVentasPct = totalVentas > 0 ? (totalCompras/totalVentas*100) : 0;
+  const gastosFijosPct = totalVentas > 0 ? (totalGastos/totalVentas*100) : 0;
+  const totalTickets = ventas.reduce((s,v) => s+(v.tickets||0), 0);
+  const ticketMedio = totalTickets > 0 ? (totalVentas/totalTickets) : null;
+  const diasVentas = [...new Set(ventas.map(v=>v.fecha))].length;
+  const ventaMediaDia = diasVentas > 0 ? (totalVentas/diasVentas) : 0;
+
+  // Días necesarios para cubrir gastos fijos
+  const diasCubrir = ventaMediaDia > 0 ? Math.ceil(totalGastos/ventaMediaDia) : null;
+
+  // ── KPIs Grid ──
+  const kpiData = [
+    { label:'Ventas totales', valor: fmtEur(totalVentas), sub: diasVentas + ' días registrados', color:'verde' },
+    { label:'Beneficio estimado', valor: fmtEur(beneficio), sub: 'Ventas - todos los costes', color: beneficio>=0 ? 'verde' : 'rojo' },
+    { label:'Margen bruto', valor: margenPct.toFixed(1)+'%', sub: fmtEur(margenBruto), color: margenPct>=30 ? 'verde' : 'naranja' },
+    { label:'% Compras/Ventas', valor: comprasVentasPct.toFixed(1)+'%', sub: 'Objetivo: <70%', color: comprasVentasPct<70 ? 'verde' : 'rojo' },
+    { label:'Gastos fijos', valor: fmtEur(totalGastos), sub: gastosFijosPct.toFixed(1)+'% sobre ventas', color:'naranja' },
+    { label:'Ticket medio', valor: ticketMedio ? fmtEur(ticketMedio) : 'Sin datos', sub: ticketMedio ? totalTickets+' tickets' : 'Introduce nº clientes', color:'normal' },
+    { label:'Venta media/día', valor: fmtEur(ventaMediaDia), sub: 'Media diaria', color:'normal' },
+    { label:'Días para cubrir fijos', valor: diasCubrir ? diasCubrir+'d' : '—', sub: diasCubrir ? 'de ventas necesarios' : '', color: diasCubrir && diasCubrir<=10 ? 'verde' : 'naranja' },
+  ];
+
+  const colores = { verde:'var(--verde)', naranja:'var(--naranja)', rojo:'var(--rojo)', normal:'var(--texto)' };
+  const fondos = { verde:'var(--verde-suave)', naranja:'var(--naranja-suave)', rojo:'#fee2e2', normal:'white' };
+
+  document.getElementById('kpiGrid').innerHTML = kpiData.map(k => `
+    <div style="background:${fondos[k.color]};border-radius:14px;padding:14px;box-shadow:var(--sombra)">
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:${colores[k.color]};font-weight:700;margin-bottom:4px;opacity:0.8">${k.label}</div>
+      <div style="font-size:22px;font-weight:900;font-family:'Playfair Display',serif;color:${colores[k.color]}">${k.valor}</div>
+      <div style="font-size:11px;color:${colores[k.color]};opacity:0.7;margin-top:2px">${k.sub}</div>
+    </div>
+  `).join('');
+
+  // ── Datos por mes ──
+  const meses = getMesesEnRango(rango);
+  const labels = meses.map(({y,m}) => MESES[m].slice(0,3) + (meses.length>12?'\''+String(y).slice(2):''));
+
+  const ventasPorMes = meses.map(({y,m}) =>
+    ventas.filter(v => { const d=new Date(v.fecha); return d.getFullYear()===y && d.getMonth()===m; })
+          .reduce((s,v)=>s+v.total,0)
+  );
+  const comprasPorMes = meses.map(({y,m}) =>
+    facturas.filter(f => { const d=new Date(f.fecha); return d.getFullYear()===y && d.getMonth()===m; })
+            .reduce((s,f)=>s+f.importeTotal,0)
+  );
+  const gastosPorMes = meses.map(({y,m}) =>
+    gastos.filter(g => { const d=new Date(g.fecha); return d.getFullYear()===y && d.getMonth()===m; })
+          .reduce((s,g)=>s+g.importe,0)
+  );
+  const beneficioPorMes = ventasPorMes.map((v,i) => v - comprasPorMes[i] - gastosPorMes[i]);
+
+  // Línea de tendencia (regresión lineal simple)
+  function tendencia(arr) {
+    const n = arr.length;
+    if (n < 2) return arr;
+    const sumX = arr.reduce((_,__,i)=>_+i,0);
+    const sumY = arr.reduce((s,v)=>s+v,0);
+    const sumXY = arr.reduce((s,v,i)=>s+i*v,0);
+    const sumX2 = arr.reduce((s,_,i)=>s+i*i,0);
+    const m2 = (n*sumXY - sumX*sumY)/(n*sumX2 - sumX*sumX);
+    const b2 = (sumY - m2*sumX)/n;
+    return arr.map((_,i) => Math.round((m2*i+b2)*100)/100);
+  }
+
+  // ── Chart 1: Evolución ventas con tendencia ──
+  const ctx1 = document.getElementById('chartVentas').getContext('2d');
+  if (chartVentasObj) chartVentasObj.destroy();
+  chartVentasObj = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Ventas', data: ventasPorMes, backgroundColor:'rgba(45,106,79,0.7)', borderColor:'#2d6a4f', borderWidth:1 },
+        { label:'Tendencia', data: tendencia(ventasPorMes), type:'line', borderColor:'#e07a2f', borderWidth:2, pointRadius:0, fill:false, tension:0.4 }
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ y:{ beginAtZero:true, ticks:{ callback: v => v+'€' } } } }
+  });
+
+  // ── Chart 2: Ventas vs Costes (barras apiladas) ──
+  const ctx2 = document.getElementById('chartMargen').getContext('2d');
+  if (chartMargenObj) chartMargenObj.destroy();
+  chartMargenObj = new Chart(ctx2, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Compras', data: comprasPorMes, backgroundColor:'rgba(224,122,47,0.8)', stack:'costes' },
+        { label:'Gastos fijos', data: gastosPorMes, backgroundColor:'rgba(193,68,14,0.7)', stack:'costes' },
+        { label:'Beneficio', data: beneficioPorMes.map(v=>Math.max(0,v)), backgroundColor:'rgba(45,106,79,0.8)', stack:'costes' },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ callback: v=>v+'€' } } } }
+  });
+
+  // ── Chart 3: Comparativa por año (mismo mes, distintos años) ──
+  renderComparativaAnual();
+
+  // ── KPIs detallados ──
+  const ef = ventas.reduce((s,v)=>s+v.efectivo,0);
+  const tj = ventas.reduce((s,v)=>s+v.tarjeta,0);
+  const pctEf = totalVentas>0?(ef/totalVentas*100):0;
+  const pctTj = totalVentas>0?(tj/totalVentas*100):0;
+
+  const ventaT1 = ventas.filter(v=>v.tienda==='tienda1').reduce((s,v)=>s+v.total,0);
+  const ventaT2 = ventas.filter(v=>v.tienda==='tienda2').reduce((s,v)=>s+v.total,0);
+  const pctT1 = totalVentas>0?(ventaT1/totalVentas*100):0;
+  const pctT2 = totalVentas>0?(ventaT2/totalVentas*100):0;
+
+  document.getElementById('kpiDetalle').innerHTML = `
+    <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:10px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--gris);font-weight:700;margin-bottom:12px">Medios de pago</div>
+      <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;height:24px;margin-bottom:8px">
+        <div style="width:${pctEf}%;background:var(--verde);transition:width 0.5s"></div>
+        <div style="width:${pctTj}%;background:var(--naranja)"></div>
+      </div>
+      <div style="display:flex;gap:16px;font-size:13px">
+        <span>💵 Efectivo: <strong>${pctEf.toFixed(1)}%</strong> (${fmtEur(ef)})</span>
+        <span>💳 Tarjeta: <strong>${pctTj.toFixed(1)}%</strong> (${fmtEur(tj)})</span>
+      </div>
+    </div>
+    <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);margin-bottom:10px">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--gris);font-weight:700;margin-bottom:12px">Ventas por tienda</div>
+      <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;height:24px;margin-bottom:8px">
+        <div style="width:${pctT1}%;background:var(--verde);transition:width 0.5s"></div>
+        <div style="width:${pctT2}%;background:#1d4ed8"></div>
+      </div>
+      <div style="display:flex;gap:16px;font-size:13px">
+        <span>🏪 San Asturio: <strong>${pctT1.toFixed(1)}%</strong> (${fmtEur(ventaT1)})</span>
+        <span>🏬 J.Guzmán: <strong>${pctT2.toFixed(1)}%</strong> (${fmtEur(ventaT2)})</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderComparativaAnual() {
+  const todasVentas = getStorage('hcarmen_ventas');
+  if (!todasVentas.length) return;
+
+  const años = [...new Set(todasVentas.map(v => new Date(v.fecha).getFullYear()))].sort();
+  const coloresAnos = ['#2d6a4f','#e07a2f','#1d4ed8','#7c3aed','#c1440e'];
+
+  const datasets = años.map((año, i) => {
+    const data = Array.from({length:12}, (_,m) => {
+      const base = todasVentas
+        .filter(v => {
+          const d = new Date(v.fecha);
+          return d.getFullYear()===año && d.getMonth()===m &&
+            (statsFiltroTienda==='todas' || v.tienda===statsFiltroTienda);
+        })
+        .reduce((s,v)=>s+v.total,0);
+      // Ajuste por inflación: traer años anteriores al valor actual
+      const añosAtras = años[años.length-1] - año;
+      return añosAtras > 0 ? Math.round(base * Math.pow(1 + statsInflacion/100, añosAtras) * 100)/100 : base;
+    });
+    return {
+      label: año + (años.indexOf(año)<años.length-1 ? ' (aj. inflación)' : ''),
+      data,
+      borderColor: coloresAnos[i % coloresAnos.length],
+      backgroundColor: coloresAnos[i % coloresAnos.length] + '22',
+      borderWidth: 2,
+      tension: 0.3,
+      fill: false,
+      pointRadius: 3
+    };
+  });
+
+  const ctx3 = document.getElementById('chartComparativa').getContext('2d');
+  if (chartComparativaObj) chartComparativaObj.destroy();
+  chartComparativaObj = new Chart(ctx3, {
+    type: 'line',
+    data: { labels: MESES.map(m=>m.slice(0,3)), datasets },
+    options: {
+      responsive: true,
+      plugins: { legend: { position:'bottom' } },
+      scales: { y: { beginAtZero: true, ticks: { callback: v => v+'€' } } }
+    }
+  });
+}
+
+function cambiarInflacion() {
+  const val = prompt('Introduce el % de inflación anual para ajustar la comparativa:', statsInflacion);
+  if (val !== null && !isNaN(parseFloat(val))) {
+    statsInflacion = parseFloat(val);
+    document.getElementById('inflacionPct').textContent = statsInflacion + '%';
+    renderComparativaAnual();
+  }
 }
 
 </script>
