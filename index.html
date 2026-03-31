@@ -2262,14 +2262,36 @@ async function comprimirImagen(src, maxPx) {
 
 function rellenarDatosOCR(datos) {
   document.getElementById('ocrTipo').textContent = datos.tipo || '—';
-  document.getElementById('ocrProveedor').textContent = datos.proveedor || '—';
   document.getElementById('ocrImporte').textContent = datos.importe ? datos.importe + ' €' : '—';
-  // Rellenar formulario automáticamente
-  if (datos.proveedor) document.getElementById('factProveedor').value = datos.proveedor;
   if (datos.importe)   document.getElementById('factImporte').value = datos.importe;
   if (datos.tipo)      document.getElementById('factTipo').value = datos.tipo;
   if (datos.fecha)     document.getElementById('factFecha').value = datos.fecha;
-  showToast('✨ Datos detectados automáticamente', 'ok');
+
+  // Buscar si el proveedor detectado existe en la BD
+  if (datos.proveedor) {
+    const provs = getProveedores();
+    const texto_lower = datos.proveedor.toLowerCase();
+    const match = provs.find(p => {
+      const nombre_lower = p.razonSocial.toLowerCase();
+      // Match exacto o si uno contiene al otro (ej: "HORGRUPAN" en "HORGRUPAN S.L.")
+      return nombre_lower === texto_lower ||
+             nombre_lower.includes(texto_lower) ||
+             texto_lower.includes(nombre_lower);
+    });
+
+    if (match) {
+      // Proveedor encontrado — seleccionarlo automáticamente
+      document.getElementById('ocrProveedor').textContent = '✓ ' + match.razonSocial;
+      seleccionarProveedor(match.id);
+      showToast('✨ Datos detectados · Proveedor reconocido', 'ok');
+    } else {
+      // Proveedor no encontrado — mostrar nombre y sugerir crear
+      document.getElementById('ocrProveedor').textContent = datos.proveedor + ' (nuevo)';
+      document.getElementById('factProveedor').value = datos.proveedor;
+      document.getElementById('autocompleteBox').style.display = 'none';
+      showToast('✨ Detectado · Proveedor nuevo, añádelo a la BD al guardar', 'ok');
+    }
+  }
 }
 
 function mostrarOCRManual() {
@@ -2311,6 +2333,40 @@ async function guardarFactura() {
     notas: document.getElementById('factNotas').value.trim(),
     synced: false
   };
+
+  // Verificar si el proveedor existe en la BD — si no, ofrecer crearlo
+  const provs = getProveedores();
+  const provExiste = proveedorSeleccionado || provs.find(p =>
+    p.razonSocial.toLowerCase() === proveedor.toLowerCase()
+  );
+  if (!provExiste) {
+    const crear = confirm('El proveedor "' + proveedor + '" no está en tu base de datos. ¿Quieres añadirlo ahora?');
+    if (crear) {
+      // Guardar la factura primero en local
+      const facturaTemp = {...factura};
+      const facturas = getStorage('hcarmen_facturas');
+      facturas.push(facturaTemp);
+      setStorage('hcarmen_facturas', facturas);
+      resetFormFactura();
+      // Abrir modal de nuevo proveedor con nombre prellenado
+      mostrarModalProveedor();
+      document.getElementById('pRazonSocial').value = proveedor;
+      window._fromFactura = false; // no redirigir al formulario
+      showToast('Factura guardada. Completa los datos del proveedor.', 'ok');
+      hideLoading();
+      // Sincronizar factura en background
+      syncData('addFactura', {factura: {
+        fecha: factura.fecha, proveedor: factura.proveedor,
+        tienda: nombreTienda(factura.tienda), importe: factura.importeTotal,
+        tipo: factura.tipo, notas: factura.notas, syncId: factura.syncId
+      }}).then(ok => {
+        if (ok) setStorage('hcarmen_facturas',
+          getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
+      });
+      navBack();
+      return;
+    }
+  }
 
   showLoading('Guardando factura...');
   const facturas = getStorage('hcarmen_facturas');
