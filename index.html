@@ -5,7 +5,251 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Alimentación HCarmen</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
+// ══════════════════════════════════════════════════════
+// BASE DE DATOS DE PROVEEDORES
+// ══════════════════════════════════════════════════════
+
+let proveedorSeleccionado = null;
+
+function getProveedores() {
+  return getStorage('hcarmen_proveedores') || [];
+}
+
+// ── AUTOCOMPLETADO EN FACTURA ──
+function buscarProveedor(texto) {
+  const box = document.getElementById('autocompleteBox');
+  const badge = document.getElementById('provBadge');
+
+  // Si hay proveedor seleccionado, no mostrar autocompletado
+  if (proveedorSeleccionado) return;
+
+  if (!texto || texto.length < 1) { box.style.display = 'none'; return; }
+
+  const provs = getProveedores();
+  const texto_lower = texto.toLowerCase();
+  const matches = provs.filter(p =>
+    p.razonSocial.toLowerCase().includes(texto_lower) ||
+    (p.cif && p.cif.toLowerCase().includes(texto_lower))
+  ).slice(0, 6);
+
+  let html = matches.map(p => `
+    <div class="autocomplete-item" onclick="seleccionarProveedor('${p.id}')">
+      <span class="prov-nombre">${p.razonSocial}</span>
+      <span class="prov-cif">${p.cif || 'Sin CIF'}</span>
+    </div>
+  `).join('');
+
+  // Opción de crear nuevo si no hay match exacto
+  const exacto = provs.find(p => p.razonSocial.toLowerCase() === texto_lower);
+  if (!exacto) {
+    html += `<div class="autocomplete-nuevo" onclick="crearProveedorRapido('${texto.replace(/'/g,"\\'")}')">
+      ➕ Crear "${texto}" como nuevo proveedor
+    </div>`;
+  }
+
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+function seleccionarProveedor(provId) {
+  const prov = getProveedores().find(p => p.id === provId);
+  if (!prov) return;
+  proveedorSeleccionado = prov;
+  document.getElementById('factProveedor').value = prov.razonSocial;
+  document.getElementById('autocompleteBox').style.display = 'none';
+
+  // Mostrar badge con info del proveedor
+  document.getElementById('provBadge').style.display = 'block';
+  document.getElementById('provBadge').innerHTML = `
+    <div class="prov-badge">
+      <div class="prov-badge-info">
+        <div class="prov-badge-nombre">✓ ${prov.razonSocial}</div>
+        <div class="prov-badge-cif">${prov.cif || ''} ${prov.telefono ? '· ' + prov.telefono : ''}</div>
+      </div>
+      <button class="btn-cambiar-prov" onclick="limpiarProveedorSeleccionado()">Cambiar</button>
+    </div>
+  `;
+}
+
+function limpiarProveedorSeleccionado() {
+  proveedorSeleccionado = null;
+  document.getElementById('factProveedor').value = '';
+  document.getElementById('provBadge').style.display = 'none';
+  document.getElementById('autocompleteBox').style.display = 'none';
+  document.getElementById('factProveedor').focus();
+}
+
+function crearProveedorRapido(nombre) {
+  document.getElementById('autocompleteBox').style.display = 'none';
+  // Abrir modal con nombre prellenado
+  mostrarModalProveedor();
+  document.getElementById('pRazonSocial').value = nombre;
+  // Guardar contexto para volver a la factura
+  document.getElementById('modalProvTitulo').textContent = 'Nuevo proveedor';
+  // Flag para saber que venimos de la factura
+  window._fromFactura = true;
+}
+
+// Cerrar autocomplete al hacer click fuera
+document.addEventListener('click', function(e) {
+  const wrapper = document.getElementById('provInputWrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    const box = document.getElementById('autocompleteBox');
+    if (box) box.style.display = 'none';
+  }
+});
+
+// ── GESTIÓN DE PROVEEDORES ──
+function renderListaProveedores(filtro) {
+  const provs = getProveedores();
+  const texto = (filtro || '').toLowerCase();
+  const filtrados = texto
+    ? provs.filter(p => p.razonSocial.toLowerCase().includes(texto) || (p.cif||'').toLowerCase().includes(texto))
+    : provs;
+
+  const lista = document.getElementById('listaProveedores');
+  if (!filtrados.length) {
+    lista.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">🏢</div>
+      <h3>${texto ? 'Sin resultados' : 'Sin proveedores'}</h3>
+      <p>${texto ? 'No hay proveedores con ese nombre o CIF.' : 'Pulsa "+ Nuevo" para añadir tu primer proveedor.'}</p>
+    </div>`;
+    return;
+  }
+
+  lista.innerHTML = filtrados.map(p => `
+    <div class="item-card" style="flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="item-tipo-dot factura" style="font-size:20px">🏢</div>
+        <div style="flex:1;min-width:0">
+          <div class="item-titulo">${p.razonSocial}</div>
+          <div class="item-meta">
+            ${p.cif ? '<span>' + p.cif + '</span>' : ''}
+            ${p.telefono ? '<span>' + p.telefono + '</span>' : ''}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="editarProveedor('${p.id}')" style="background:var(--verde-suave);border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--verde);font-family:'Lato',sans-serif">✏️</button>
+          <button onclick="borrarProveedor('${p.id}')" style="background:#fee2e2;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--rojo);font-family:'Lato',sans-serif">🗑</button>
+        </div>
+      </div>
+      ${p.email || p.contactoNombre ? `<div style="font-size:12px;color:var(--gris);padding-left:52px">
+        ${p.contactoNombre ? '👤 ' + p.contactoNombre : ''}
+        ${p.contactoEmail ? ' · ' + p.contactoEmail : ''}
+        ${p.email && !p.contactoEmail ? p.email : ''}
+      </div>` : ''}
+      ${p.notas ? `<div style="font-size:12px;color:var(--gris);padding-left:52px;font-style:italic">${p.notas.slice(0,80)}${p.notas.length>80?'…':''}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function mostrarModalProveedor(provId) {
+  // Limpiar campos
+  ['pRazonSocial','pCif','pTelefono','pEmail','pWeb','pDireccion',
+   'pContactoNombre','pContactoTel','pContactoEmail','pIban','pNotas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('editProvId').value = '';
+  document.getElementById('modalProvTitulo').textContent = 'Nuevo proveedor';
+  document.getElementById('modalProveedor').style.display = 'flex';
+}
+
+function editarProveedor(provId) {
+  const prov = getProveedores().find(p => p.id === provId);
+  if (!prov) return;
+  document.getElementById('editProvId').value = provId;
+  document.getElementById('modalProvTitulo').textContent = 'Editar proveedor';
+  document.getElementById('pRazonSocial').value = prov.razonSocial || '';
+  document.getElementById('pCif').value = prov.cif || '';
+  document.getElementById('pTelefono').value = prov.telefono || '';
+  document.getElementById('pEmail').value = prov.email || '';
+  document.getElementById('pWeb').value = prov.web || '';
+  document.getElementById('pDireccion').value = prov.direccion || '';
+  document.getElementById('pContactoNombre').value = prov.contactoNombre || '';
+  document.getElementById('pContactoTel').value = prov.contactoTel || '';
+  document.getElementById('pContactoEmail').value = prov.contactoEmail || '';
+  document.getElementById('pIban').value = prov.iban || '';
+  document.getElementById('pNotas').value = prov.notas || '';
+  document.getElementById('modalProveedor').style.display = 'flex';
+}
+
+function cerrarModalProveedor() {
+  document.getElementById('modalProveedor').style.display = 'none';
+  window._fromFactura = false;
+}
+
+async function guardarProveedor() {
+  const razonSocial = document.getElementById('pRazonSocial').value.trim();
+  if (!razonSocial) { showToast('La razón social es obligatoria', 'error'); return; }
+
+  const editId = document.getElementById('editProvId').value;
+  const provs = getProveedores();
+
+  // Verificar duplicado
+  const duplicado = provs.find(p => 
+    p.razonSocial.toLowerCase() === razonSocial.toLowerCase() && p.id !== editId
+  );
+  if (duplicado) {
+    if (!confirm(`Ya existe un proveedor con el nombre "${duplicado.razonSocial}". ¿Quieres crear otro igualmente?`)) return;
+  }
+
+  const prov = {
+    id: editId || ('prov_' + getId()),
+    razonSocial,
+    cif: document.getElementById('pCif').value.trim(),
+    telefono: document.getElementById('pTelefono').value.trim(),
+    email: document.getElementById('pEmail').value.trim(),
+    web: document.getElementById('pWeb').value.trim(),
+    direccion: document.getElementById('pDireccion').value.trim(),
+    contactoNombre: document.getElementById('pContactoNombre').value.trim(),
+    contactoTel: document.getElementById('pContactoTel').value.trim(),
+    contactoEmail: document.getElementById('pContactoEmail').value.trim(),
+    iban: document.getElementById('pIban').value.trim(),
+    notas: document.getElementById('pNotas').value.trim(),
+    syncId: editId || ('prov_' + getId()),
+    synced: false
+  };
+
+  let nuevos;
+  if (editId) {
+    nuevos = provs.map(p => p.id === editId ? prov : p);
+  } else {
+    nuevos = [...provs, prov];
+  }
+
+  setStorage('hcarmen_proveedores', nuevos);
+  await syncData('saveProveedor', { proveedor: prov, isEdit: !!editId });
+  registrarLog('PROVEEDOR', (editId ? 'Editado: ' : 'Creado: ') + razonSocial);
+
+  cerrarModalProveedor();
+  renderListaProveedores('');
+  showToast('Proveedor guardado', 'ok');
+
+  // Si venimos de la factura, seleccionar este proveedor
+  if (window._fromFactura) {
+    window._fromFactura = false;
+    seleccionarProveedor(prov.id);
+  }
+}
+
+function borrarProveedor(provId) {
+  const prov = getProveedores().find(p => p.id === provId);
+  if (!prov) return;
+  if (!confirm('¿Borrar el proveedor "' + prov.razonSocial + '"? No se borrarán las facturas asociadas.')) return;
+  const nuevos = getProveedores().filter(p => p.id !== provId);
+  setStorage('hcarmen_proveedores', nuevos);
+  syncData('deleteRegistro', { tipo: 'proveedor', syncId: provId });
+  registrarLog('PROVEEDOR', 'Borrado: ' + prov.razonSocial);
+  renderListaProveedores('');
+  showToast('Proveedor eliminado', 'ok');
+}
+
+// Limpiar proveedor al resetear formulario factura
+const _resetFormFacturaOrig = window.resetFormFactura;
+
+</script>
 <style>
   :root {
     --verde: #2d6a4f;
@@ -885,6 +1129,64 @@
   .caja-fila.ok { color: #d8f3dc; }
   .caja-fila.alerta { color: #fdecd6; }
 
+
+  /* ── PROVEEDORES ── */
+  .autocomplete-box {
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: white;
+    border: 2px solid var(--verde-claro);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    z-index: 200;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: var(--sombra);
+  }
+  .autocomplete-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .autocomplete-item:last-child { border-bottom: none; }
+  .autocomplete-item:hover, .autocomplete-item:active { background: var(--verde-suave); }
+  .autocomplete-item .prov-nombre { font-weight: 700; color: var(--texto); }
+  .autocomplete-item .prov-cif { font-size: 11px; color: var(--gris); }
+  .autocomplete-nuevo {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--verde);
+    font-weight: 700;
+    background: var(--verde-suave);
+    border-radius: 0 0 12px 12px;
+  }
+  .input-wrapper { position: relative; }
+  .prov-badge {
+    background: var(--verde-suave);
+    border: 1.5px solid var(--verde-claro);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+  .prov-badge-info { display: flex; flex-direction: column; gap: 2px; }
+  .prov-badge-nombre { font-weight: 700; color: var(--verde); font-size: 14px; }
+  .prov-badge-cif { font-size: 11px; color: var(--gris); }
+  .btn-cambiar-prov {
+    background: none; border: none; color: var(--gris);
+    font-size: 12px; cursor: pointer; font-weight: 700;
+    font-family: 'Lato', sans-serif; text-decoration: underline;
+  }
+
 </style>
 </head>
 <body>
@@ -1113,11 +1415,16 @@
       <span class="btn-desc">Todos los registros</span>
     </button>
   </div>
-  <div class="menu-grid single">
+  <div class="menu-grid">
     <button class="menu-btn" onclick="navTo('screen-proveedores')">
       <span class="btn-icon">🚚</span>
       <span class="btn-label">Compras por Proveedor</span>
-      <span class="btn-desc">Cuánto gastamos con cada uno</span>
+      <span class="btn-desc">Cuánto gastamos</span>
+    </button>
+    <button class="menu-btn" onclick="navTo('screen-gestion-proveedores');renderListaProveedores('')">
+      <span class="btn-icon">🏢</span>
+      <span class="btn-label">Proveedores</span>
+      <span class="btn-desc">Base de datos</span>
     </button>
   </div>
   <div class="menu-grid single">
@@ -1189,7 +1496,15 @@
 
       <div class="field-group">
         <div class="field-label">Proveedor</div>
-        <input type="text" class="field-input" id="factProveedor" placeholder="Nombre del proveedor">
+        <div class="input-wrapper" id="provInputWrapper">
+          <input type="text" class="field-input" id="factProveedor" 
+                 placeholder="Escribe para buscar proveedor..."
+                 autocomplete="off"
+                 oninput="buscarProveedor(this.value)"
+                 onfocus="buscarProveedor(this.value)">
+          <div class="autocomplete-box" id="autocompleteBox" style="display:none"></div>
+        </div>
+        <div id="provBadge" style="display:none"></div>
       </div>
 
       <div class="field-group">
@@ -1444,6 +1759,90 @@
     <div style="padding:0 20px 20px">
       <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Análisis detallado</div>
       <div id="kpiDetalle"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: PROVEEDORES (GESTIÓN)
+════════════════════════════════════════ -->
+<div class="screen" id="screen-gestion-proveedores">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Proveedores</div>
+        <div class="header-subtitle">Base de datos</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-content">
+    <div style="padding:16px 20px 8px;display:flex;gap:10px">
+      <div class="input-wrapper" style="flex:1">
+        <input type="text" class="field-input" id="buscadorProveedores" 
+               placeholder="Buscar proveedor..." oninput="renderListaProveedores(this.value)">
+      </div>
+      <button class="btn-submit" style="flex:0;padding:14px 16px;white-space:nowrap" 
+              onclick="mostrarModalProveedor()">+ Nuevo</button>
+    </div>
+    <div class="lista-items" id="listaProveedores"></div>
+  </div>
+</div>
+
+<!-- MODAL PROVEEDOR (nuevo/editar) -->
+<div class="modal-overlay" id="modalProveedor" style="display:none">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="modalProvTitulo">Nuevo proveedor</div>
+    <input type="hidden" id="editProvId">
+    
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="field-group">
+        <div class="field-label">Razón social *</div>
+        <input type="text" class="field-input" id="pRazonSocial" placeholder="Nombre empresa">
+      </div>
+      <div class="field-group">
+        <div class="field-label">CIF/NIF</div>
+        <input type="text" class="field-input" id="pCif" placeholder="B-12345678">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field-group">
+          <div class="field-label">Teléfono</div>
+          <input type="tel" class="field-input" id="pTelefono" placeholder="916 123 456">
+        </div>
+        <div class="field-group">
+          <div class="field-label">Email</div>
+          <input type="email" class="field-input" id="pEmail" placeholder="info@empresa.es">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">Web</div>
+        <input type="text" class="field-input" id="pWeb" placeholder="www.empresa.es">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Dirección</div>
+        <input type="text" class="field-input" id="pDireccion" placeholder="C/ Ejemplo, 1 - 28000 Madrid">
+      </div>
+      <div style="background:var(--crema-oscura);border-radius:10px;padding:12px;margin:4px 0">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gris);margin-bottom:8px">Persona de contacto</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input type="text" class="field-input" id="pContactoNombre" placeholder="Nombre del contacto">
+          <input type="tel" class="field-input" id="pContactoTel" placeholder="Teléfono contacto">
+          <input type="email" class="field-input" id="pContactoEmail" placeholder="Email contacto">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">IBAN / Datos bancarios</div>
+        <input type="text" class="field-input" id="pIban" placeholder="ES12 2100 0418 45XX XXXX XXXX">
+      </div>
+      <div class="field-group">
+        <div class="field-label">Notas / Condiciones comerciales</div>
+        <textarea class="field-textarea" id="pNotas" placeholder="Días de pago, descuentos, observaciones..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn-cancelar" onclick="cerrarModalProveedor()">Cancelar</button>
+      <button class="btn-submit" style="flex:1" onclick="guardarProveedor()">Guardar</button>
     </div>
   </div>
 </div>
@@ -2098,6 +2497,16 @@ async function cargarDatosDesdeSheet() {
       setStorage('hcarmen_gastos', [...delSheet, ...pendientesG.filter(g => !sheetIds.has(g.syncId))]);
     }
 
+    // Sincronizar proveedores (el Sheet manda)
+    if (data.proveedores && Array.isArray(data.proveedores)) {
+      const provLocal = getStorage('hcarmen_proveedores');
+      const provSheet = data.proveedores.map(p => ({...p, synced: true}));
+      // Mezclar: Sheet tiene preferencia, conservar locales no sincronizados
+      const sheetIds = new Set(provSheet.map(p => p.id));
+      const soloLocales = provLocal.filter(p => !p.synced && !sheetIds.has(p.id));
+      setStorage('hcarmen_proveedores', [...provSheet, ...soloLocales]);
+    }
+
     console.log('[SYNC] Sincronizacion completa con Google Sheets');
     updateSyncBar();
   } catch(e) {
@@ -2383,6 +2792,9 @@ function resetFormFactura() {
   document.getElementById('ocrResultDiv').style.display = 'none';
   document.getElementById('photoPreview').style.display = 'none';
   document.getElementById('cameraOverlay').style.display = 'flex';
+  document.getElementById('provBadge').style.display = 'none';
+  document.getElementById('autocompleteBox').style.display = 'none';
+  proveedorSeleccionado = null;
   tiendaFact = null;
   fotoBase64 = null;
   document.getElementById('tiendaBtn1').classList.remove('selected');
