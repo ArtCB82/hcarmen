@@ -620,6 +620,270 @@
 
   /* ── SCROLL PADDING ── */
   .scroll-content { padding-bottom: 32px; }
+
+  /* ── LOGIN / USUARIOS ── */
+  .login-screen {
+    min-height: 100vh;
+    background: linear-gradient(160deg, var(--verde) 0%, var(--verde-claro) 60%, var(--naranja) 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+  }
+  .login-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    font-weight: 900;
+    color: white;
+    margin-bottom: 6px;
+    letter-spacing: -1px;
+  }
+  .login-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    margin-bottom: 40px;
+    font-weight: 300;
+  }
+  .usuarios-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 380px;
+    margin-bottom: 32px;
+  }
+  .usuario-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: transform 0.18s;
+  }
+  .usuario-card:active { transform: scale(0.95); }
+  .usuario-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    font-weight: 900;
+    font-family: 'Playfair Display', serif;
+    color: white;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    border: 3px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .usuario-card:hover .usuario-avatar { border-color: rgba(255,255,255,0.6); }
+  .usuario-nombre {
+    font-size: 13px;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .usuario-rol {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+  }
+
+  /* PIN TECLADO */
+  .pin-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 500;
+    padding-bottom: 0;
+  }
+  .pin-panel {
+    background: var(--crema);
+    border-radius: 28px 28px 0 0;
+    padding: 28px 24px 40px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .pin-usuario-info {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .pin-avatar-small {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 900;
+    color: white;
+    font-family: 'Playfair Display', serif;
+  }
+  .pin-nombre { font-size: 18px; font-weight: 700; }
+  .pin-hint { font-size: 13px; color: var(--gris); }
+  .pin-dots {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  .pin-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    transition: background 0.15s;
+  }
+  .pin-dot.filled { background: var(--verde); }
+  .pin-dot.error { background: var(--rojo); }
+  .pin-teclado {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .pin-key {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 18px;
+    font-size: 22px;
+    font-weight: 700;
+    font-family: 'Playfair Display', serif;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.12s;
+    color: var(--texto);
+  }
+  .pin-key:active { background: var(--verde-suave); border-color: var(--verde); transform: scale(0.95); }
+  .pin-key.borrar { font-size: 18px; color: var(--gris); }
+  .pin-key.volver { font-size: 14px; color: var(--gris); }
+
+  /* BADGE USUARIO EN HEADER */
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    padding: 4px 10px 4px 4px;
+    margin-left: auto;
+    cursor: pointer;
+  }
+  .user-badge-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 900;
+    color: white;
+    font-family: 'Playfair Display', serif;
+  }
+  .user-badge-nombre { font-size: 12px; color: white; font-weight: 700; }
+
+  /* PANEL ADMIN */
+  .admin-section { padding: 16px 20px 8px; }
+  .admin-card {
+    background: white;
+    border-radius: var(--radio);
+    padding: 16px;
+    margin-bottom: 10px;
+    box-shadow: var(--sombra);
+  }
+  .admin-card-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--gris);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .usuario-row-admin {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+  }
+  .usuario-row-admin:last-child { border-bottom: none; }
+  .usuario-row-info { flex: 1; }
+  .usuario-row-nombre { font-weight: 700; font-size: 15px; }
+  .usuario-row-meta { font-size: 12px; color: var(--gris); }
+  .tag-rol {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .tag-rol.admin { background: var(--naranja-suave); color: var(--naranja); }
+  .tag-rol.user { background: var(--verde-suave); color: var(--verde); }
+  .tag-inactivo { background: #f3f4f6; color: var(--gris); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+
+  .log-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f4f6;
+    font-size: 13px;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-accion { font-weight: 700; color: var(--texto); }
+  .log-meta { color: var(--gris); font-size: 11px; margin-top: 2px; }
+
+  /* MODAL NUEVO USUARIO */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 600;
+    padding: 20px;
+  }
+  .modal-box {
+    background: var(--crema);
+    border-radius: var(--radio-grande);
+    padding: 24px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: var(--sombra-fuerte);
+  }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 16px; color: var(--verde); }
+  .modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-cancelar {
+    flex: 1; padding: 14px; border-radius: 12px; border: 2px solid #e5e7eb;
+    background: white; font-family: 'Lato', sans-serif; font-size: 15px;
+    font-weight: 700; cursor: pointer; color: var(--gris);
+  }
+
+  /* CIERRE DE CAJA */
+  .caja-resumen {
+    background: var(--verde);
+    border-radius: var(--radio);
+    padding: 16px;
+    color: white;
+    margin: 0 0 16px;
+  }
+  .caja-fila {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    padding: 3px 0;
+  }
+  .caja-fila.total { font-weight: 900; font-size: 18px; border-top: 1px solid rgba(255,255,255,0.3); margin-top: 8px; padding-top: 8px; }
+  .caja-fila.diferencia { font-weight: 700; }
+  .caja-fila.ok { color: #d8f3dc; }
+  .caja-fila.alerta { color: #fdecd6; }
+
 </style>
 </head>
 <body>
@@ -636,11 +900,142 @@
 <!-- ══════════════════════════════════════
      PANTALLA: HOME
 ════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════
+     PANTALLA: LOGIN
+════════════════════════════════════════ -->
+<div id="screen-login" class="login-screen" style="display:none">
+  <div class="login-logo">🛒 HCarmen</div>
+  <div class="login-sub">Control de tiendas · Selecciona tu perfil</div>
+  <div class="usuarios-grid" id="usuariosGrid"></div>
+</div>
+
+<!-- PIN OVERLAY -->
+<div class="pin-overlay" id="pinOverlay" style="display:none">
+  <div class="pin-panel">
+    <div class="pin-usuario-info">
+      <div class="pin-avatar-small" id="pinAvatarSmall"></div>
+      <div>
+        <div class="pin-nombre" id="pinNombre"></div>
+        <div class="pin-hint">Introduce tu PIN</div>
+      </div>
+    </div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-teclado">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key volver" onclick="cerrarPin()">← Volver</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key borrar" onclick="pinBorrar()">⌫</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: ADMIN
+════════════════════════════════════════ -->
+<div class="screen" id="screen-admin">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Panel Admin</div>
+        <div class="header-subtitle">Gestión y configuración</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-content">
+    <div class="admin-section">
+      <div class="section-label">Usuarios</div>
+      <div class="admin-card">
+        <div class="admin-card-title">Usuarios registrados</div>
+        <div id="adminUsuariosList"></div>
+        <button class="btn-submit" style="margin-top:12px" onclick="mostrarModalNuevoUsuario()">+ Nuevo usuario</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="section-label">API de Claude (OCR)</div>
+      <div class="admin-card">
+        <div class="admin-card-title">Estado de la API</div>
+        <div id="adminApiStatus" style="font-size:14px;color:var(--gris)">Cargando...</div>
+        <button class="btn-submit" style="margin-top:12px;background:var(--gris)" onclick="testApiClaude()">🔍 Verificar API</button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="section-label">Log de actividad</div>
+      <div class="admin-card">
+        <div class="admin-card-title">Últimas 50 acciones</div>
+        <div id="adminLogList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NUEVO USUARIO -->
+<div class="modal-overlay" id="modalNuevoUsuario" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">Nuevo usuario</div>
+    <div class="field-group" style="margin-bottom:12px">
+      <div class="field-label">Nombre</div>
+      <input type="text" class="field-input" id="nuNombre" placeholder="Nombre del usuario">
+    </div>
+    <div class="field-group" style="margin-bottom:12px">
+      <div class="field-label">PIN (4 dígitos)</div>
+      <input type="number" class="field-input" id="nuPin" placeholder="1234" maxlength="4">
+    </div>
+    <div class="field-group" style="margin-bottom:12px">
+      <div class="field-label">Rol</div>
+      <select class="field-select" id="nuRol">
+        <option value="user">Usuario</option>
+        <option value="admin">Administrador</option>
+      </select>
+    </div>
+    <div class="field-group" style="margin-bottom:12px">
+      <div class="field-label">Color avatar</div>
+      <select class="field-select" id="nuColor">
+        <option value="#2d6a4f">Verde</option>
+        <option value="#e07a2f">Naranja</option>
+        <option value="#c1440e">Rojo</option>
+        <option value="#1d4ed8">Azul</option>
+        <option value="#7c3aed">Morado</option>
+        <option value="#b45309">Marrón</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarModalUsuario()">Cancelar</button>
+      <button class="btn-submit" style="flex:1" onclick="crearUsuario()">Crear</button>
+    </div>
+  </div>
+</div>
+
 <div class="screen active" id="screen-home">
-  <div class="home-hero">
-    <div class="logo">🛒</div>
-    <h1>HCarmen</h1>
-    <p>Control de tiendas</p>
+  <div style="background:var(--verde);padding:12px 20px;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-family:'Playfair Display',serif;font-size:20px;color:white;font-weight:700">🛒 HCarmen</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div id="adminBtnHome" style="display:none">
+        <button onclick="navTo('screen-admin');cargarAdmin()" style="background:rgba(255,255,255,0.18);border:none;color:white;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif">⚙️ Admin</button>
+      </div>
+      <div class="user-badge" onclick="cerrarSesion()">
+        <div class="user-badge-avatar" id="headerAvatar"></div>
+        <div class="user-badge-nombre" id="headerNombre"></div>
+      </div>
+    </div>
+  </div>
+  <div class="home-hero" style="padding-top:20px">
+    <p style="opacity:0.85;font-size:13px" id="homeWelcome">Bienvenido</p>
   </div>
   <div class="date-badge" id="fechaHoy"></div>
 
@@ -831,6 +1226,20 @@
       <div class="field-group">
         <div class="field-label">Notas (opcional)</div>
         <textarea class="field-textarea" id="ventaNotas" placeholder="Día festivo, incidencia..."></textarea>
+      </div>
+
+      <div class="caja-resumen" id="cajaResumen" style="display:none">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:0.8;margin-bottom:8px;font-weight:700">Cierre de caja</div>
+        <div class="caja-fila"><span>💵 Efectivo ventas</span><span id="cajaEfVentas">0,00 €</span></div>
+        <div class="caja-fila"><span>🪙 Fondo inicial</span><span id="cajaFondoShow">0,00 €</span></div>
+        <div class="caja-fila total"><span>Total en caja</span><span id="cajaTotalEsperado">0,00 €</span></div>
+        <div class="caja-fila"><span>💳 Tarjeta (TPV)</span><span id="cajaTarjetaShow">0,00 €</span></div>
+        <div class="caja-fila diferencia" id="cajaDiferencia"></div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">🪙 Fondo inicial de caja (€)</div>
+        <input type="number" class="field-input" id="ventaFondo" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
       </div>
 
       <button class="btn-submit" onclick="guardarVenta()">✓ Guardar Ventas</button>
@@ -1092,14 +1501,23 @@ function fmtEur(n) {
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
   const hoy = new Date();
-  document.getElementById('fechaHoy').textContent = hoy.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-  updateSyncBar();
+  const fechaEl = document.getElementById('fechaHoy');
+  if (fechaEl) fechaEl.textContent = hoy.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
 
-  // Cargar datos desde Google Sheets (si hay conexión)
-  await cargarDatosDesdeSheet();
-
-  // Reintentar pendientes de sesiones anteriores
-  await reintentarPendientes();
+  // Intentar recuperar sesión activa
+  if (recuperarSesion()) {
+    // Sesión válida — ir al home
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-home').classList.add('active');
+    updateSyncBar();
+    await cargarDatosDesdeSheet();
+    await reintentarPendientes();
+  } else {
+    // Sin sesión — mostrar login
+    mostrarLogin();
+    // Cargar datos en background igualmente
+    cargarDatosDesdeSheet();
+  }
 });
 
 // ── SELECCIÓN TIENDA ──
@@ -1128,7 +1546,23 @@ function selGTienda(t) {
 function calcTotal() {
   const ef = parseFloat(document.getElementById('ventaEfectivo').value)||0;
   const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
-  document.getElementById('totalDiaDisplay').textContent = fmtEur(ef+tj);
+  const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
+  const total = ef + tj;
+  document.getElementById('totalDiaDisplay').textContent = fmtEur(total);
+  
+  // Cierre de caja
+  const cajaRes = document.getElementById('cajaResumen');
+  if (total > 0 || fondo > 0) {
+    cajaRes.style.display = 'block';
+    document.getElementById('cajaEfVentas').textContent = fmtEur(ef);
+    document.getElementById('cajaFondoShow').textContent = fmtEur(fondo);
+    document.getElementById('cajaTotalEsperado').textContent = fmtEur(ef + fondo);
+    document.getElementById('cajaTarjetaShow').textContent = fmtEur(tj);
+    const difEl = document.getElementById('cajaDiferencia');
+    difEl.innerHTML = '<span>Total general</span><span>' + fmtEur(total + fondo) + '</span>';
+  } else {
+    cajaRes.style.display = 'none';
+  }
 }
 
 // ── CÁMARA ──
@@ -1354,6 +1788,7 @@ async function guardarFactura() {
   }
 
   hideLoading();
+  registrarLog('FACTURA', factura.proveedor + ' · ' + fmtEur(factura.importeTotal), nombreTienda(factura.tienda));
   showToast(ok ? '✓ Factura guardada y sincronizada' : '✓ Guardada (se sincronizará después)', ok ? 'ok' : '');
   resetFormFactura();
   navBack();
@@ -1366,6 +1801,7 @@ async function guardarVenta() {
   const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
   if (ef + tj <= 0) { showToast('Introduce al menos un importe', 'error'); return; }
 
+  const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
   const syncIdV = getId();
   const venta = {
     id: syncIdV,
@@ -1375,6 +1811,7 @@ async function guardarVenta() {
     efectivo: ef,
     tarjeta: tj,
     total: ef + tj,
+    fondo: fondo,
     notas: document.getElementById('ventaNotas').value.trim(),
     synced: false
   };
@@ -1398,6 +1835,7 @@ async function guardarVenta() {
   }
 
   hideLoading();
+  registrarLog('VENTA', fmtEur(venta.total) + ' (Ef:' + fmtEur(venta.efectivo) + ' Tj:' + fmtEur(venta.tarjeta) + ')', nombreTienda(venta.tienda));
   showToast(ok ? '✓ Ventas guardadas y sincronizadas' : '✓ Guardadas (se sincronizarán después)', ok ? 'ok' : '');
   resetFormVenta();
   navBack();
@@ -1443,6 +1881,7 @@ async function guardarGasto() {
   }
 
   hideLoading();
+  registrarLog('GASTO', gasto.concepto + ' · ' + fmtEur(gasto.importe), nombreTienda(gasto.tienda));
   showToast(ok ? '✓ Gasto guardado y sincronizado' : '✓ Guardado (se sincronizará después)', ok ? 'ok' : '');
   resetFormGasto();
   navBack();
@@ -1645,6 +2084,7 @@ async function borrarRegistro(tipo, id, btn) {
   // Borrar del Sheet
   await syncData('deleteRegistro', { tipo, syncId: id });
 
+  registrarLog('BORRADO', tipo + ' eliminado (id:' + id + ')');
   showToast('Registro eliminado', 'ok');
   // Refrescar historial con el filtro activo
   const activoBtn = document.querySelector('.filtro-btn.active');
@@ -1836,6 +2276,299 @@ function showToast(msg, tipo) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.className = 'toast'; updateSyncBar(); }, 3000);
 }
+
+// ══════════════════════════════════════════════════════
+// SISTEMA DE USUARIOS Y AUTENTICACIÓN
+// ══════════════════════════════════════════════════════
+
+// Usuarios por defecto (se guardan en localStorage y se sincronizan con Sheet)
+const USUARIOS_DEFAULT = [
+  { id: 'usr_admin', nombre: 'Arturo', rol: 'admin', pin: '1982', color: '#2d6a4f', activo: true },
+  { id: 'usr_arturo', nombre: 'Arturo U', rol: 'user', pin: '1234', color: '#1d4ed8', activo: true },
+  { id: 'usr_padre', nombre: 'Padre', rol: 'user', pin: '0000', color: '#e07a2f', activo: true }
+];
+
+let usuarioActual = null;
+let pinBuffer = '';
+let usuarioPinTarget = null;
+let sessionTimer = null;
+const SESSION_DURATION = 60 * 60 * 1000; // 1 hora
+
+function getUsuarios() {
+  try {
+    const stored = JSON.parse(localStorage.getItem('hcarmen_usuarios'));
+    if (stored && stored.length > 0) return stored;
+  } catch(e) {}
+  setStorage('hcarmen_usuarios', USUARIOS_DEFAULT);
+  return USUARIOS_DEFAULT;
+}
+
+function iniciales(nombre) {
+  return nombre.split(' ').map(p => p[0]).join('').toUpperCase().slice(0,2);
+}
+
+// ── PANTALLA LOGIN ──
+function mostrarLogin() {
+  usuarioActual = null;
+  document.querySelectorAll('.screen').forEach(s => { s.classList.remove('active'); s.style.display = ''; });
+  document.getElementById('screen-login').style.display = 'flex';
+  renderUsuariosGrid();
+}
+
+function renderUsuariosGrid() {
+  const usuarios = getUsuarios().filter(u => u.activo);
+  const grid = document.getElementById('usuariosGrid');
+  grid.innerHTML = usuarios.map(u => `
+    <div class="usuario-card" onclick="abrirPin('${u.id}')">
+      <div class="usuario-avatar" style="background:${u.color}">${iniciales(u.nombre)}</div>
+      <div class="usuario-nombre">${u.nombre}</div>
+      <div class="usuario-rol">${u.rol === 'admin' ? '👑 Admin' : '👤 Usuario'}</div>
+    </div>
+  `).join('');
+}
+
+function abrirPin(userId) {
+  const u = getUsuarios().find(x => x.id === userId);
+  if (!u) return;
+  usuarioPinTarget = u;
+  pinBuffer = '';
+  actualizarDots();
+  document.getElementById('pinAvatarSmall').style.background = u.color;
+  document.getElementById('pinAvatarSmall').textContent = iniciales(u.nombre);
+  document.getElementById('pinNombre').textContent = u.nombre;
+  document.getElementById('pinOverlay').style.display = 'flex';
+}
+
+function cerrarPin() {
+  document.getElementById('pinOverlay').style.display = 'none';
+  pinBuffer = '';
+  usuarioPinTarget = null;
+}
+
+function pinKey(digit) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += digit;
+  actualizarDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(verificarPin, 150);
+  }
+}
+
+function pinBorrar() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  actualizarDots();
+}
+
+function actualizarDots(error = false) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.className = 'pin-dot' + (i < pinBuffer.length ? ' filled' : '') + (error ? ' error' : '');
+  }
+}
+
+function verificarPin() {
+  if (pinBuffer === usuarioPinTarget.pin) {
+    iniciarSesion(usuarioPinTarget);
+  } else {
+    actualizarDots(true);
+    setTimeout(() => { pinBuffer = ''; actualizarDots(); }, 800);
+    showToast('PIN incorrecto', 'error');
+  }
+}
+
+function iniciarSesion(usuario) {
+  usuarioActual = usuario;
+  const expira = Date.now() + SESSION_DURATION;
+  localStorage.setItem('hcarmen_session', JSON.stringify({ userId: usuario.id, expira }));
+  
+  cerrarPin();
+  document.getElementById('screen-login').style.display = 'none';
+  
+  // Actualizar badge en header
+  actualizarHeaderUsuario();
+  
+  // Mostrar botón admin si es admin
+  const adminBtn = document.getElementById('adminBtnHome');
+  if (adminBtn) adminBtn.style.display = usuario.rol === 'admin' ? 'block' : 'none';
+  
+  // Mostrar home
+  navTo('screen-home');
+  
+  // Iniciar temporizador de sesión
+  if (sessionTimer) clearTimeout(sessionTimer);
+  sessionTimer = setTimeout(cerrarSesion, SESSION_DURATION);
+  
+  registrarLog('LOGIN', 'Inicio de sesión');
+  showToast('Bienvenido, ' + usuario.nombre + ' 👋', 'ok');
+}
+
+function actualizarHeaderUsuario() {
+  if (!usuarioActual) return;
+  const avatar = document.getElementById('headerAvatar');
+  const nombre = document.getElementById('headerNombre');
+  const welcome = document.getElementById('homeWelcome');
+  if (avatar) { avatar.style.background = usuarioActual.color; avatar.textContent = iniciales(usuarioActual.nombre); }
+  if (nombre) nombre.textContent = usuarioActual.nombre;
+  if (welcome) welcome.textContent = 'Hola, ' + usuarioActual.nombre + ' 👋';
+}
+
+function cerrarSesion() {
+  localStorage.removeItem('hcarmen_session');
+  if (sessionTimer) clearTimeout(sessionTimer);
+  usuarioActual = null;
+  mostrarLogin();
+}
+
+function recuperarSesion() {
+  try {
+    const session = JSON.parse(localStorage.getItem('hcarmen_session'));
+    if (session && session.expira > Date.now()) {
+      const usuario = getUsuarios().find(u => u.id === session.userId);
+      if (usuario && usuario.activo) {
+        usuarioActual = usuario;
+        actualizarHeaderUsuario();
+        const adminBtn = document.getElementById('adminBtnHome');
+        if (adminBtn) adminBtn.style.display = usuario.rol === 'admin' ? 'block' : 'none';
+        const tiempoRestante = session.expira - Date.now();
+        sessionTimer = setTimeout(cerrarSesion, tiempoRestante);
+        return true;
+      }
+    }
+  } catch(e) {}
+  return false;
+}
+
+// ══════════════════════════════════════════════════════
+// LOG DE ACTIVIDAD
+// ══════════════════════════════════════════════════════
+
+function registrarLog(accion, detalle, tienda) {
+  const entrada = {
+    id: getId(),
+    fecha: new Date().toISOString(),
+    usuario: usuarioActual ? usuarioActual.nombre : 'Sistema',
+    usuarioId: usuarioActual ? usuarioActual.id : 'system',
+    accion,
+    detalle: detalle || '',
+    tienda: tienda || ''
+  };
+  
+  const logs = getStorage('hcarmen_log');
+  logs.unshift(entrada); // más reciente primero
+  if (logs.length > 200) logs.pop(); // máx 200 entradas locales
+  setStorage('hcarmen_log', logs);
+  
+  // Sincronizar con Sheet
+  syncData('addLog', { log: entrada });
+}
+
+// ══════════════════════════════════════════════════════
+// PANEL ADMINISTRADOR
+// ══════════════════════════════════════════════════════
+
+function cargarAdmin() {
+  if (!usuarioActual || usuarioActual.rol !== 'admin') {
+    showToast('Acceso denegado', 'error');
+    navBack();
+    return;
+  }
+  renderAdminUsuarios();
+  renderAdminLog();
+  document.getElementById('adminApiStatus').innerHTML = 'Pulsa "Verificar API" para comprobar el estado';
+}
+
+function renderAdminUsuarios() {
+  const usuarios = getUsuarios();
+  const lista = document.getElementById('adminUsuariosList');
+  lista.innerHTML = usuarios.map(u => `
+    <div class="usuario-row-admin">
+      <div class="pin-avatar-small" style="background:${u.color};width:40px;height:40px;border-radius:12px;flex-shrink:0">${iniciales(u.nombre)}</div>
+      <div class="usuario-row-info">
+        <div class="usuario-row-nombre">${u.nombre}</div>
+        <div class="usuario-row-meta">PIN: ${'•'.repeat(4)} · ${u.rol === 'admin' ? '<span class="tag-rol admin">Admin</span>' : '<span class="tag-rol user">Usuario</span>'} ${!u.activo ? '<span class="tag-inactivo">Inactivo</span>' : ''}</div>
+      </div>
+      <button onclick="toggleUsuario('${u.id}')" style="background:${u.activo ? '#fee2e2' : '#d8f3dc'};border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;cursor:pointer;color:${u.activo ? '#c1440e' : '#2d6a4f'};font-family:'Lato',sans-serif">
+        ${u.activo ? 'Desactivar' : 'Activar'}
+      </button>
+    </div>
+  `).join('');
+}
+
+function renderAdminLog() {
+  const logs = getStorage('hcarmen_log').slice(0, 50);
+  const lista = document.getElementById('adminLogList');
+  if (!logs.length) { lista.innerHTML = '<p style="color:var(--gris);font-size:13px">Sin actividad registrada</p>'; return; }
+  lista.innerHTML = logs.map(l => {
+    const fecha = new Date(l.fecha);
+    const fechaStr = fecha.toLocaleDateString('es-ES') + ' ' + fecha.toLocaleTimeString('es-ES', {hour:'2-digit',minute:'2-digit'});
+    return `<div class="log-item">
+      <div class="log-accion">${l.accion}: ${l.detalle}</div>
+      <div class="log-meta">${l.usuario} · ${fechaStr}${l.tienda ? ' · ' + l.tienda : ''}</div>
+    </div>`;
+  }).join('');
+}
+
+function toggleUsuario(userId) {
+  const usuarios = getUsuarios();
+  const idx = usuarios.findIndex(u => u.id === userId);
+  if (idx === -1) return;
+  if (usuarios[idx].id === usuarioActual.id) { showToast('No puedes desactivarte a ti mismo', 'error'); return; }
+  usuarios[idx].activo = !usuarios[idx].activo;
+  setStorage('hcarmen_usuarios', usuarios);
+  registrarLog('USUARIO', (usuarios[idx].activo ? 'Activado: ' : 'Desactivado: ') + usuarios[idx].nombre);
+  renderAdminUsuarios();
+  showToast('Usuario actualizado', 'ok');
+}
+
+function mostrarModalNuevoUsuario() {
+  document.getElementById('nuNombre').value = '';
+  document.getElementById('nuPin').value = '';
+  document.getElementById('modalNuevoUsuario').style.display = 'flex';
+}
+
+function cerrarModalUsuario() {
+  document.getElementById('modalNuevoUsuario').style.display = 'none';
+}
+
+function crearUsuario() {
+  const nombre = document.getElementById('nuNombre').value.trim();
+  const pin = String(document.getElementById('nuPin').value).trim();
+  const rol = document.getElementById('nuRol').value;
+  const color = document.getElementById('nuColor').value;
+  
+  if (!nombre) { showToast('Introduce un nombre', 'error'); return; }
+  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('El PIN debe tener 4 dígitos', 'error'); return; }
+  
+  const nuevos = getUsuarios();
+  nuevos.push({
+    id: 'usr_' + getId(),
+    nombre, rol, pin, color, activo: true
+  });
+  setStorage('hcarmen_usuarios', nuevos);
+  registrarLog('USUARIO', 'Nuevo usuario creado: ' + nombre);
+  cerrarModalUsuario();
+  renderAdminUsuarios();
+  showToast('Usuario ' + nombre + ' creado', 'ok');
+}
+
+async function testApiClaude() {
+  document.getElementById('adminApiStatus').innerHTML = '⏳ Verificando...';
+  const ok = await syncData('testApi', {});
+  // Como syncData usa GET, llamamos directamente
+  try {
+    const res = await fetch(APPS_SCRIPT_URL + '?action=testApi', { method: 'GET', mode: 'cors' });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('adminApiStatus').innerHTML = '✅ API activa · Modelo: ' + (data.modelo || 'claude-opus-4-5') + '<br><span style="color:var(--gris);font-size:12px">Último test: ' + new Date().toLocaleTimeString('es-ES') + '</span>';
+    } else {
+      document.getElementById('adminApiStatus').innerHTML = '❌ Error: ' + (data.error || 'Sin créditos o clave incorrecta');
+    }
+  } catch(e) {
+    document.getElementById('adminApiStatus').innerHTML = '❌ No se pudo conectar con el servidor';
+  }
+}
+
+
 </script>
 </body>
 </html>
