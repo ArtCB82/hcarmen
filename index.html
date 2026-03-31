@@ -988,9 +988,28 @@
     <div class="admin-section">
       <div class="section-label">API de Claude (OCR)</div>
       <div class="admin-card">
-        <div class="admin-card-title">Estado de la API</div>
-        <div id="adminApiStatus" style="font-size:14px;color:var(--gris)">Cargando...</div>
-        <button class="btn-submit" style="margin-top:12px;background:var(--gris)" onclick="testApiClaude()">🔍 Verificar API</button>
+        <div class="admin-card-title">Estado y uso</div>
+        <div id="adminApiStatus" style="font-size:14px;color:var(--gris);margin-bottom:12px">Pulsa verificar para comprobar el estado</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+          <div style="background:var(--verde-suave);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--verde);font-weight:700;margin-bottom:4px">Llamadas este mes</div>
+            <div style="font-size:24px;font-weight:900;color:var(--verde);font-family:'Playfair Display',serif" id="apiCallsMes">—</div>
+          </div>
+          <div style="background:var(--naranja-suave);border-radius:10px;padding:12px;text-align:center">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:var(--naranja);font-weight:700;margin-bottom:4px">Coste estimado</div>
+            <div style="font-size:24px;font-weight:900;color:var(--naranja);font-family:'Playfair Display',serif" id="apiCosteMes">—</div>
+          </div>
+        </div>
+
+        <div style="background:#f3f4f6;border-radius:8px;padding:10px;font-size:12px;color:var(--gris);margin-bottom:12px">
+          💡 ~0,015€ por análisis de imagen. El coste real puede variar según el tamaño del documento.
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button class="btn-submit" style="flex:1;background:var(--gris)" onclick="testApiClaude()">🔍 Verificar API</button>
+          <button class="btn-submit" style="flex:1;background:#1d4ed8" onclick="window.open('https://console.anthropic.com/settings/billing','_blank')">💳 Ver saldo</button>
+        </div>
       </div>
     </div>
 
@@ -1657,6 +1676,15 @@ async function mostrarFoto(src) {
 
     const tempId = Date.now().toString(36);
     console.log('[OCR] Enviando al Apps Script, tempId:', tempId);
+
+    // Registrar uso de API localmente
+    const usageKey = 'hcarmen_api_usage';
+    try {
+      const uso = JSON.parse(localStorage.getItem(usageKey) || '{}');
+      const mesKey = new Date().toISOString().slice(0,7); // YYYY-MM
+      uso[mesKey] = (uso[mesKey] || 0) + 1;
+      localStorage.setItem(usageKey, JSON.stringify(uso));
+    } catch(e) {}
 
     // Enviar imagen via GET con datos codificados
     // (usamos GET porque no-cors POST no permite leer respuesta)
@@ -2494,7 +2522,29 @@ function cargarAdmin() {
   }
   renderAdminUsuarios();
   renderAdminLog();
-  document.getElementById('adminApiStatus').innerHTML = 'Pulsa "Verificar API" para comprobar el estado';
+  cargarUsoApi();
+}
+
+async function cargarUsoApi() {
+  // Primero mostrar datos locales inmediatamente
+  try {
+    const uso = JSON.parse(localStorage.getItem('hcarmen_api_usage') || '{}');
+    const mesKey = new Date().toISOString().slice(0,7);
+    const llamadasLocal = uso[mesKey] || 0;
+    document.getElementById('apiCallsMes').textContent = llamadasLocal;
+    document.getElementById('apiCosteMes').textContent = (llamadasLocal * 0.015).toFixed(2) + '€';
+  } catch(e) {}
+
+  // Luego intentar obtener datos del Sheet (suma entre dispositivos)
+  try {
+    const mesKey = new Date().toISOString().slice(0,7);
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getApiUsage&mes=' + mesKey, { method: 'GET', mode: 'cors' });
+    const data = await res.json();
+    if (!data.error && data.llamadas !== undefined) {
+      document.getElementById('apiCallsMes').textContent = data.llamadas;
+      document.getElementById('apiCosteMes').textContent = (data.llamadas * 0.015).toFixed(2) + '€';
+    }
+  } catch(e) {}
 }
 
 function renderAdminUsuarios() {
