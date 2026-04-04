@@ -249,6 +249,108 @@ function borrarProveedor(provId) {
 // Limpiar proveedor al resetear formulario factura
 const _resetFormFacturaOrig = window.resetFormFactura;
 
+
+// ══════════════════════════════════════════════════════
+// CONTEO DE BILLETES Y MONEDAS
+// ══════════════════════════════════════════════════════
+
+const BILLETES = [50, 20, 10, 5];
+const MONEDAS  = [2, 1, 0.50, 0.20];
+
+function toggleConteoBilletes() {
+  const panel = document.getElementById('conteoBilletesPanel');
+  const icon  = document.getElementById('conteoToggleIcon');
+  const abierto = panel.style.display !== 'none';
+  panel.style.display = abierto ? 'none' : 'block';
+  icon.textContent = abierto ? '▼' : '▲';
+  if (!abierto) inicializarConteo();
+}
+
+function inicializarConteo() {
+  document.getElementById('conteoFilasBilletes').innerHTML =
+    BILLETES.map(v => filaConteo(v, '€', 'bill')).join('');
+  document.getElementById('conteoFilasMonedas').innerHTML =
+    MONEDAS.map(v => filaConteo(v, '€', 'mon')).join('');
+  actualizarConteoEfectivo();
+}
+
+function filaConteo(valor, unidad, prefijo) {
+  const id = prefijo + '_' + String(valor).replace('.','_');
+  const etiqueta = valor >= 1 ? valor + ' €' : (valor * 100).toFixed(0) + ' ct';
+  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <div style="width:64px;text-align:right;font-weight:700;font-size:15px;color:var(--texto)">${etiqueta}</div>
+    <button onclick="cambiarConteo('${id}', -1)" style="width:36px;height:36px;border-radius:10px;border:2px solid #e5e7eb;background:white;font-size:18px;cursor:pointer;font-weight:700;color:var(--gris)">−</button>
+    <input type="number" id="${id}" value="0" min="0" step="1"
+           style="width:60px;text-align:center;border:2px solid #e5e7eb;border-radius:10px;padding:8px;font-size:16px;font-weight:700;font-family:'Lato',sans-serif"
+           oninput="actualizarConteoEfectivo()">
+    <button onclick="cambiarConteo('${id}', 1)" style="width:36px;height:36px;border-radius:10px;border:2px solid #e5e7eb;background:white;font-size:18px;cursor:pointer;font-weight:700;color:var(--verde)">+</button>
+    <div style="flex:1;text-align:right;font-size:13px;color:var(--gris)" id="${id}_sub">0,00 €</div>
+  </div>`;
+}
+
+function cambiarConteo(id, delta) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = Math.max(0, (parseInt(el.value)||0) + delta);
+  actualizarConteoEfectivo();
+}
+
+function actualizarConteoEfectivo() {
+  const panel = document.getElementById('conteoBilletesPanel');
+  if (!panel || panel.style.display === 'none') return;
+
+  let totalContado = 0;
+
+  BILLETES.forEach(v => {
+    const id = 'bill_' + String(v).replace('.','_');
+    const n = parseInt(document.getElementById(id)?.value)||0;
+    const subtotal = n * v;
+    totalContado += subtotal;
+    const sub = document.getElementById(id + '_sub');
+    if (sub) sub.textContent = fmtEur(subtotal);
+  });
+
+  MONEDAS.forEach(v => {
+    const id = 'mon_' + String(v).replace('.','_');
+    const n = parseInt(document.getElementById(id)?.value)||0;
+    const subtotal = Math.round(n * v * 100) / 100;
+    totalContado += subtotal;
+    const sub = document.getElementById(id + '_sub');
+    if (sub) sub.textContent = fmtEur(subtotal);
+  });
+
+  totalContado = Math.round(totalContado * 100) / 100;
+  const totalContadoEl = document.getElementById('totalContado');
+  if (totalContadoEl) totalContadoEl.textContent = fmtEur(totalContado);
+
+  // Comparar con efectivo calculado (total - tarjeta)
+  const total = parseFloat(document.getElementById('ventaTotal')?.value)||0;
+  const tj    = parseFloat(document.getElementById('ventaTarjeta')?.value)||0;
+  const fondo = parseFloat(document.getElementById('ventaFondo')?.value)||0;
+  const efEsperado = Math.max(0, total - tj) + fondo;
+
+  const difEl = document.getElementById('diferenciaCaja');
+  if (difEl && efEsperado > 0) {
+    const dif = Math.round((totalContado - efEsperado) * 100) / 100;
+    difEl.style.display = 'block';
+    if (Math.abs(dif) < 0.01) {
+      difEl.style.background = 'var(--verde-suave)';
+      difEl.style.color = 'var(--verde)';
+      difEl.textContent = '✅ Caja cuadrada perfectamente';
+    } else if (dif > 0) {
+      difEl.style.background = 'var(--naranja-suave)';
+      difEl.style.color = 'var(--naranja)';
+      difEl.textContent = '⚠️ Sobran ' + fmtEur(Math.abs(dif)) + ' en caja';
+    } else {
+      difEl.style.background = '#fee2e2';
+      difEl.style.color = 'var(--rojo)';
+      difEl.textContent = '❌ Faltan ' + fmtEur(Math.abs(dif)) + ' en caja';
+    }
+  } else if (difEl) {
+    difEl.style.display = 'none';
+  }
+}
+
 </script>
 <style>
   :root {
@@ -1569,21 +1671,28 @@ const _resetFormFacturaOrig = window.resetFormFactura;
         <input type="date" class="field-input" id="ventaFecha">
       </div>
 
-      <div class="importe-row">
-        <div class="field-group">
-          <div class="field-label">💵 Efectivo (€)</div>
-          <input type="number" class="field-input" id="ventaEfectivo" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
-        </div>
-        <div class="field-group">
-          <div class="field-label">💳 Tarjeta (€)</div>
-          <input type="number" class="field-input" id="ventaTarjeta" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
-        </div>
+      <div class="field-group">
+        <div class="field-label">📊 Total del día (caja registradora) (€)</div>
+        <input type="number" class="field-input" id="ventaTotal" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">💳 Total tarjeta/datáfono (€)</div>
+        <input type="number" class="field-input" id="ventaTarjeta" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
       </div>
 
       <div class="stat-card verde">
         <div class="stat-label">Total del Día</div>
         <div class="stat-value" id="totalDiaDisplay">0,00 €</div>
       </div>
+
+      <div style="background:var(--crema-oscura);border-radius:12px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:700;color:var(--gris)">💵 Efectivo calculado</span>
+        <span style="font-size:20px;font-weight:900;color:var(--verde);font-family:'Playfair Display',serif" id="efectivoCalc">0,00 €</span>
+      </div>
+
+      <!-- Campo oculto para compatibilidad interna -->
+      <input type="hidden" id="ventaEfectivo" value="0">
 
       <div class="field-group">
         <div class="field-label">🧾 Nº de tickets/clientes (opcional)</div>
@@ -1607,6 +1716,26 @@ const _resetFormFacturaOrig = window.resetFormFactura;
       <div class="field-group">
         <div class="field-label">🪙 Fondo inicial de caja (€)</div>
         <input type="number" class="field-input" id="ventaFondo" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
+      </div>
+
+      <!-- CONTEO DE BILLETES Y MONEDAS -->
+      <div>
+        <button onclick="toggleConteoBilletes()" style="width:100%;background:var(--crema-oscura);border:2px solid #e5e7eb;border-radius:12px;padding:14px;font-size:14px;font-weight:700;font-family:'Lato',sans-serif;cursor:pointer;color:var(--gris);display:flex;justify-content:space-between;align-items:center">
+          <span>🔢 Contar billetes y monedas</span>
+          <span id="conteoToggleIcon">▼</span>
+        </button>
+
+        <div id="conteoBilletesPanel" style="display:none;background:white;border:2px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;padding:16px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gris);margin-bottom:12px">Billetes</div>
+          <div id="conteoFilasBilletes"></div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--gris);margin:12px 0 8px">Monedas</div>
+          <div id="conteoFilasMonedas"></div>
+          <div style="margin-top:14px;padding-top:12px;border-top:2px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:700;color:var(--gris)">Total contado</span>
+            <span style="font-size:22px;font-weight:900;font-family:'Playfair Display',serif;color:var(--verde)" id="totalContado">0,00 €</span>
+          </div>
+          <div id="diferenciaCaja" style="margin-top:8px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:700;display:none"></div>
+        </div>
       </div>
 
       <button class="btn-submit" onclick="guardarVenta()">✓ Guardar Ventas</button>
@@ -2078,12 +2207,16 @@ function selGTienda(t) {
 
 // ── CÁLCULO TOTAL VENTAS ──
 function calcTotal() {
-  const ef = parseFloat(document.getElementById('ventaEfectivo').value)||0;
-  const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
+  const total = parseFloat(document.getElementById('ventaTotal').value)||0;
+  const tj    = parseFloat(document.getElementById('ventaTarjeta').value)||0;
   const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
-  const total = ef + tj;
+  const ef    = Math.max(0, total - tj); // efectivo = total - tarjeta
+
+  // Actualizar campo oculto y display
+  document.getElementById('ventaEfectivo').value = ef;
   document.getElementById('totalDiaDisplay').textContent = fmtEur(total);
-  
+  document.getElementById('efectivoCalc').textContent = fmtEur(ef);
+
   // Cierre de caja
   const cajaRes = document.getElementById('cajaResumen');
   if (total > 0 || fondo > 0) {
@@ -2093,10 +2226,13 @@ function calcTotal() {
     document.getElementById('cajaTotalEsperado').textContent = fmtEur(ef + fondo);
     document.getElementById('cajaTarjetaShow').textContent = fmtEur(tj);
     const difEl = document.getElementById('cajaDiferencia');
-    difEl.innerHTML = '<span>Total general</span><span>' + fmtEur(total + fondo) + '</span>';
+    difEl.innerHTML = '<span>Efectivo esperado en caja</span><span>' + fmtEur(ef + fondo) + '</span>';
   } else {
     cajaRes.style.display = 'none';
   }
+
+  // Actualizar conteo de billetes/monedas si está abierto
+  actualizarConteoEfectivo();
 }
 
 // ── CÁMARA ──
@@ -2396,9 +2532,10 @@ async function guardarFactura() {
 // ── GUARDAR VENTA ──
 async function guardarVenta() {
   if (!tiendaVenta) { showToast('Selecciona una tienda', 'error'); return; }
-  const ef = parseFloat(document.getElementById('ventaEfectivo').value)||0;
-  const tj = parseFloat(document.getElementById('ventaTarjeta').value)||0;
-  if (ef + tj <= 0) { showToast('Introduce al menos un importe', 'error'); return; }
+  const total = parseFloat(document.getElementById('ventaTotal').value)||0;
+  const tj    = parseFloat(document.getElementById('ventaTarjeta').value)||0;
+  const ef    = Math.max(0, total - tj);
+  if (total <= 0) { showToast('Introduce el total del día', 'error'); return; }
 
   const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
   const tickets = parseInt(document.getElementById('ventaTickets').value)||0;
@@ -2410,7 +2547,7 @@ async function guardarVenta() {
     tienda: tiendaVenta,
     efectivo: ef,
     tarjeta: tj,
-    total: ef + tj,
+    total: total,
     fondo: fondo,
     tickets: tickets,
     notas: document.getElementById('ventaNotas').value.trim(),
@@ -2554,10 +2691,13 @@ async function cargarDatosDesdeSheet() {
     }
 
     // Sincronizar proveedores (el Sheet manda)
-    if (data.proveedores && Array.isArray(data.proveedores)) {
+    // Apps Script devuelve { proveedores: [...] }
+    const listaProv = data.proveedores && data.proveedores.proveedores
+      ? data.proveedores.proveedores
+      : (Array.isArray(data.proveedores) ? data.proveedores : null);
+    if (listaProv) {
       const provLocal = getStorage('hcarmen_proveedores');
-      const provSheet = data.proveedores.map(p => ({...p, synced: true}));
-      // Mezclar: Sheet tiene preferencia, conservar locales no sincronizados
+      const provSheet = listaProv.map(p => ({...p, synced: true}));
       const sheetIds = new Set(provSheet.map(p => p.id));
       const soloLocales = provLocal.filter(p => !p.synced && !sheetIds.has(p.id));
       setStorage('hcarmen_proveedores', [...provSheet, ...soloLocales]);
@@ -2859,13 +2999,18 @@ function resetFormFactura() {
 }
 
 function resetFormVenta() {
-  document.getElementById('ventaEfectivo').value = '';
+  document.getElementById('ventaTotal').value = '';
   document.getElementById('ventaTarjeta').value = '';
+  document.getElementById('ventaEfectivo').value = '0';
   document.getElementById('ventaNotas').value = '';
   document.getElementById('ventaFondo').value = '';
   document.getElementById('ventaTickets').value = '';
   document.getElementById('totalDiaDisplay').textContent = '0,00 €';
+  document.getElementById('efectivoCalc').textContent = '0,00 €';
   document.getElementById('cajaResumen').style.display = 'none';
+  // Cerrar conteo billetes si está abierto
+  const conteo = document.getElementById('conteoBilletesPanel');
+  if (conteo) conteo.style.display = 'none';
   tiendaVenta = null;
 }
 
