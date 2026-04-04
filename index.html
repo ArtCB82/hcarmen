@@ -5,354 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Alimentación HCarmen</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js">
-// ══════════════════════════════════════════════════════
-// BASE DE DATOS DE PROVEEDORES
-// ══════════════════════════════════════════════════════
-
-let proveedorSeleccionado = null;
-
-function getProveedores() {
-  return getStorage('hcarmen_proveedores') || [];
-}
-
-// ── AUTOCOMPLETADO EN FACTURA ──
-function buscarProveedor(texto) {
-  const box = document.getElementById('autocompleteBox');
-  const badge = document.getElementById('provBadge');
-
-  // Si hay proveedor seleccionado, no mostrar autocompletado
-  if (proveedorSeleccionado) return;
-
-  if (!texto || texto.length < 1) { box.style.display = 'none'; return; }
-
-  const provs = getProveedores();
-  const texto_lower = texto.toLowerCase();
-  const matches = provs.filter(p =>
-    p.razonSocial.toLowerCase().includes(texto_lower) ||
-    (p.cif && p.cif.toLowerCase().includes(texto_lower))
-  ).slice(0, 6);
-
-  let html = matches.map(p => `
-    <div class="autocomplete-item" onclick="seleccionarProveedor('${p.id}')">
-      <span class="prov-nombre">${p.razonSocial}</span>
-      <span class="prov-cif">${p.cif || 'Sin CIF'}</span>
-    </div>
-  `).join('');
-
-  // Opción de crear nuevo si no hay match exacto
-  const exacto = provs.find(p => p.razonSocial.toLowerCase() === texto_lower);
-  if (!exacto) {
-    html += `<div class="autocomplete-nuevo" onclick="crearProveedorRapido('${texto.replace(/'/g,"\\'")}')">
-      ➕ Crear "${texto}" como nuevo proveedor
-    </div>`;
-  }
-
-  box.innerHTML = html;
-  box.style.display = 'block';
-}
-
-function seleccionarProveedor(provId) {
-  const prov = getProveedores().find(p => p.id === provId);
-  if (!prov) return;
-  proveedorSeleccionado = prov;
-  document.getElementById('factProveedor').value = prov.razonSocial;
-  document.getElementById('autocompleteBox').style.display = 'none';
-
-  // Mostrar badge con info del proveedor
-  document.getElementById('provBadge').style.display = 'block';
-  document.getElementById('provBadge').innerHTML = `
-    <div class="prov-badge">
-      <div class="prov-badge-info">
-        <div class="prov-badge-nombre">✓ ${prov.razonSocial}</div>
-        <div class="prov-badge-cif">${prov.cif || ''} ${prov.telefono ? '· ' + prov.telefono : ''}</div>
-      </div>
-      <button class="btn-cambiar-prov" onclick="limpiarProveedorSeleccionado()">Cambiar</button>
-    </div>
-  `;
-}
-
-function limpiarProveedorSeleccionado() {
-  proveedorSeleccionado = null;
-  document.getElementById('factProveedor').value = '';
-  document.getElementById('provBadge').style.display = 'none';
-  document.getElementById('autocompleteBox').style.display = 'none';
-  document.getElementById('factProveedor').focus();
-}
-
-function crearProveedorRapido(nombre) {
-  document.getElementById('autocompleteBox').style.display = 'none';
-  // Abrir modal con nombre prellenado
-  mostrarModalProveedor();
-  document.getElementById('pRazonSocial').value = nombre;
-  // Guardar contexto para volver a la factura
-  document.getElementById('modalProvTitulo').textContent = 'Nuevo proveedor';
-  // Flag para saber que venimos de la factura
-  window._fromFactura = true;
-}
-
-// Cerrar autocomplete al hacer click fuera
-document.addEventListener('click', function(e) {
-  const wrapper = document.getElementById('provInputWrapper');
-  if (wrapper && !wrapper.contains(e.target)) {
-    const box = document.getElementById('autocompleteBox');
-    if (box) box.style.display = 'none';
-  }
-});
-
-// ── GESTIÓN DE PROVEEDORES ──
-function renderListaProveedores(filtro) {
-  const provs = getProveedores();
-  const texto = (filtro || '').toLowerCase();
-  const filtrados = texto
-    ? provs.filter(p => p.razonSocial.toLowerCase().includes(texto) || (p.cif||'').toLowerCase().includes(texto))
-    : provs;
-
-  const lista = document.getElementById('listaProveedores');
-  if (!filtrados.length) {
-    lista.innerHTML = `<div class="empty-state">
-      <div class="empty-icon">🏢</div>
-      <h3>${texto ? 'Sin resultados' : 'Sin proveedores'}</h3>
-      <p>${texto ? 'No hay proveedores con ese nombre o CIF.' : 'Pulsa "+ Nuevo" para añadir tu primer proveedor.'}</p>
-    </div>`;
-    return;
-  }
-
-  lista.innerHTML = filtrados.map(p => `
-    <div class="item-card" style="flex-direction:column;gap:8px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div class="item-tipo-dot factura" style="font-size:20px">🏢</div>
-        <div style="flex:1;min-width:0">
-          <div class="item-titulo">${p.razonSocial}</div>
-          <div class="item-meta">
-            ${p.cif ? '<span>' + p.cif + '</span>' : ''}
-            ${p.telefono ? '<span>' + p.telefono + '</span>' : ''}
-          </div>
-        </div>
-        <div style="display:flex;gap:6px">
-          <button onclick="editarProveedor('${p.id}')" style="background:var(--verde-suave);border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--verde);font-family:'Lato',sans-serif">✏️</button>
-          <button onclick="borrarProveedor('${p.id}')" style="background:#fee2e2;border:none;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;color:var(--rojo);font-family:'Lato',sans-serif">🗑</button>
-        </div>
-      </div>
-      ${p.email || p.contactoNombre ? `<div style="font-size:12px;color:var(--gris);padding-left:52px">
-        ${p.contactoNombre ? '👤 ' + p.contactoNombre : ''}
-        ${p.contactoEmail ? ' · ' + p.contactoEmail : ''}
-        ${p.email && !p.contactoEmail ? p.email : ''}
-      </div>` : ''}
-      ${p.notas ? `<div style="font-size:12px;color:var(--gris);padding-left:52px;font-style:italic">${p.notas.slice(0,80)}${p.notas.length>80?'…':''}</div>` : ''}
-    </div>
-  `).join('');
-}
-
-function mostrarModalProveedor(provId) {
-  // Limpiar campos
-  ['pRazonSocial','pCif','pTelefono','pEmail','pWeb','pDireccion',
-   'pContactoNombre','pContactoTel','pContactoEmail','pIban','pNotas'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  document.getElementById('editProvId').value = '';
-  document.getElementById('modalProvTitulo').textContent = 'Nuevo proveedor';
-  document.getElementById('modalProveedor').style.display = 'flex';
-}
-
-function editarProveedor(provId) {
-  const prov = getProveedores().find(p => p.id === provId);
-  if (!prov) return;
-  document.getElementById('editProvId').value = provId;
-  document.getElementById('modalProvTitulo').textContent = 'Editar proveedor';
-  document.getElementById('pRazonSocial').value = prov.razonSocial || '';
-  document.getElementById('pCif').value = prov.cif || '';
-  document.getElementById('pTelefono').value = prov.telefono || '';
-  document.getElementById('pEmail').value = prov.email || '';
-  document.getElementById('pWeb').value = prov.web || '';
-  document.getElementById('pDireccion').value = prov.direccion || '';
-  document.getElementById('pContactoNombre').value = prov.contactoNombre || '';
-  document.getElementById('pContactoTel').value = prov.contactoTel || '';
-  document.getElementById('pContactoEmail').value = prov.contactoEmail || '';
-  document.getElementById('pIban').value = prov.iban || '';
-  document.getElementById('pNotas').value = prov.notas || '';
-  document.getElementById('modalProveedor').style.display = 'flex';
-}
-
-function cerrarModalProveedor() {
-  document.getElementById('modalProveedor').style.display = 'none';
-  window._fromFactura = false;
-}
-
-async function guardarProveedor() {
-  const razonSocial = document.getElementById('pRazonSocial').value.trim();
-  if (!razonSocial) { showToast('La razón social es obligatoria', 'error'); return; }
-
-  const editId = document.getElementById('editProvId').value;
-  const provs = getProveedores();
-
-  // Verificar duplicado
-  const duplicado = provs.find(p => 
-    p.razonSocial.toLowerCase() === razonSocial.toLowerCase() && p.id !== editId
-  );
-  if (duplicado) {
-    if (!confirm(`Ya existe un proveedor con el nombre "${duplicado.razonSocial}". ¿Quieres crear otro igualmente?`)) return;
-  }
-
-  const prov = {
-    id: editId || ('prov_' + getId()),
-    razonSocial,
-    cif: document.getElementById('pCif').value.trim(),
-    telefono: document.getElementById('pTelefono').value.trim(),
-    email: document.getElementById('pEmail').value.trim(),
-    web: document.getElementById('pWeb').value.trim(),
-    direccion: document.getElementById('pDireccion').value.trim(),
-    contactoNombre: document.getElementById('pContactoNombre').value.trim(),
-    contactoTel: document.getElementById('pContactoTel').value.trim(),
-    contactoEmail: document.getElementById('pContactoEmail').value.trim(),
-    iban: document.getElementById('pIban').value.trim(),
-    notas: document.getElementById('pNotas').value.trim(),
-    syncId: editId || ('prov_' + getId()),
-    synced: false
-  };
-
-  let nuevos;
-  if (editId) {
-    nuevos = provs.map(p => p.id === editId ? prov : p);
-  } else {
-    nuevos = [...provs, prov];
-  }
-
-  setStorage('hcarmen_proveedores', nuevos);
-  await syncData('saveProveedor', { proveedor: prov, isEdit: !!editId });
-  registrarLog('PROVEEDOR', (editId ? 'Editado: ' : 'Creado: ') + razonSocial);
-
-  cerrarModalProveedor();
-  renderListaProveedores('');
-  showToast('Proveedor guardado', 'ok');
-
-  // Si venimos de la factura, seleccionar este proveedor
-  if (window._fromFactura) {
-    window._fromFactura = false;
-    seleccionarProveedor(prov.id);
-  }
-}
-
-function borrarProveedor(provId) {
-  const prov = getProveedores().find(p => p.id === provId);
-  if (!prov) return;
-  if (!confirm('¿Borrar el proveedor "' + prov.razonSocial + '"? No se borrarán las facturas asociadas.')) return;
-  const nuevos = getProveedores().filter(p => p.id !== provId);
-  setStorage('hcarmen_proveedores', nuevos);
-  syncData('deleteRegistro', { tipo: 'proveedor', syncId: provId });
-  registrarLog('PROVEEDOR', 'Borrado: ' + prov.razonSocial);
-  renderListaProveedores('');
-  showToast('Proveedor eliminado', 'ok');
-}
-
-// Limpiar proveedor al resetear formulario factura
-const _resetFormFacturaOrig = window.resetFormFactura;
-
-
-// ══════════════════════════════════════════════════════
-// CONTEO DE BILLETES Y MONEDAS
-// ══════════════════════════════════════════════════════
-
-const BILLETES = [50, 20, 10, 5];
-const MONEDAS  = [2, 1, 0.50, 0.20];
-
-function toggleConteoBilletes() {
-  const panel = document.getElementById('conteoBilletesPanel');
-  const icon  = document.getElementById('conteoToggleIcon');
-  const abierto = panel.style.display !== 'none';
-  panel.style.display = abierto ? 'none' : 'block';
-  icon.textContent = abierto ? '▼' : '▲';
-  if (!abierto) inicializarConteo();
-}
-
-function inicializarConteo() {
-  document.getElementById('conteoFilasBilletes').innerHTML =
-    BILLETES.map(v => filaConteo(v, '€', 'bill')).join('');
-  document.getElementById('conteoFilasMonedas').innerHTML =
-    MONEDAS.map(v => filaConteo(v, '€', 'mon')).join('');
-  actualizarConteoEfectivo();
-}
-
-function filaConteo(valor, unidad, prefijo) {
-  const id = prefijo + '_' + String(valor).replace('.','_');
-  const etiqueta = valor >= 1 ? valor + ' €' : (valor * 100).toFixed(0) + ' ct';
-  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-    <div style="width:64px;text-align:right;font-weight:700;font-size:15px;color:var(--texto)">${etiqueta}</div>
-    <button onclick="cambiarConteo('${id}', -1)" style="width:36px;height:36px;border-radius:10px;border:2px solid #e5e7eb;background:white;font-size:18px;cursor:pointer;font-weight:700;color:var(--gris)">−</button>
-    <input type="number" id="${id}" value="0" min="0" step="1"
-           style="width:60px;text-align:center;border:2px solid #e5e7eb;border-radius:10px;padding:8px;font-size:16px;font-weight:700;font-family:'Lato',sans-serif"
-           oninput="actualizarConteoEfectivo()">
-    <button onclick="cambiarConteo('${id}', 1)" style="width:36px;height:36px;border-radius:10px;border:2px solid #e5e7eb;background:white;font-size:18px;cursor:pointer;font-weight:700;color:var(--verde)">+</button>
-    <div style="flex:1;text-align:right;font-size:13px;color:var(--gris)" id="${id}_sub">0,00 €</div>
-  </div>`;
-}
-
-function cambiarConteo(id, delta) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.value = Math.max(0, (parseInt(el.value)||0) + delta);
-  actualizarConteoEfectivo();
-}
-
-function actualizarConteoEfectivo() {
-  const panel = document.getElementById('conteoBilletesPanel');
-  if (!panel || panel.style.display === 'none') return;
-
-  let totalContado = 0;
-
-  BILLETES.forEach(v => {
-    const id = 'bill_' + String(v).replace('.','_');
-    const n = parseInt(document.getElementById(id)?.value)||0;
-    const subtotal = n * v;
-    totalContado += subtotal;
-    const sub = document.getElementById(id + '_sub');
-    if (sub) sub.textContent = fmtEur(subtotal);
-  });
-
-  MONEDAS.forEach(v => {
-    const id = 'mon_' + String(v).replace('.','_');
-    const n = parseInt(document.getElementById(id)?.value)||0;
-    const subtotal = Math.round(n * v * 100) / 100;
-    totalContado += subtotal;
-    const sub = document.getElementById(id + '_sub');
-    if (sub) sub.textContent = fmtEur(subtotal);
-  });
-
-  totalContado = Math.round(totalContado * 100) / 100;
-  const totalContadoEl = document.getElementById('totalContado');
-  if (totalContadoEl) totalContadoEl.textContent = fmtEur(totalContado);
-
-  // Comparar con efectivo calculado (total - tarjeta)
-  const total = parseFloat(document.getElementById('ventaTotal')?.value)||0;
-  const tj    = parseFloat(document.getElementById('ventaTarjeta')?.value)||0;
-  const fondo = parseFloat(document.getElementById('ventaFondo')?.value)||0;
-  const efEsperado = Math.max(0, total - tj) + fondo;
-
-  const difEl = document.getElementById('diferenciaCaja');
-  if (difEl && efEsperado > 0) {
-    const dif = Math.round((totalContado - efEsperado) * 100) / 100;
-    difEl.style.display = 'block';
-    if (Math.abs(dif) < 0.01) {
-      difEl.style.background = 'var(--verde-suave)';
-      difEl.style.color = 'var(--verde)';
-      difEl.textContent = '✅ Caja cuadrada perfectamente';
-    } else if (dif > 0) {
-      difEl.style.background = 'var(--naranja-suave)';
-      difEl.style.color = 'var(--naranja)';
-      difEl.textContent = '⚠️ Sobran ' + fmtEur(Math.abs(dif)) + ' en caja';
-    } else {
-      difEl.style.background = '#fee2e2';
-      difEl.style.color = 'var(--rojo)';
-      difEl.textContent = '❌ Faltan ' + fmtEur(Math.abs(dif)) + ' en caja';
-    }
-  } else if (difEl) {
-    difEl.style.display = 'none';
-  }
-}
-
-</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
+
   :root {
     --verde: #2d6a4f;
     --verde-claro: #40916c;
@@ -1289,7 +944,11 @@ function actualizarConteoEfectivo() {
     font-family: 'Lato', sans-serif; text-decoration: underline;
   }
 
+
 </style>
+</head>
+<body>
+
 </head>
 <body>
 
@@ -2102,7 +1761,9 @@ function actualizarConteoEfectivo() {
 <!-- ══════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════ -->
+
 <script>
+
 // ── CONFIGURACIÓN ──
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 
@@ -3722,6 +3383,97 @@ function cambiarInflacion() {
     document.getElementById('inflacionPct').textContent = statsInflacion + '%';
     renderComparativaAnual();
   }
+}
+
+
+// ══════════════════════════════════════════════════════
+// CONTEO DE BILLETES Y MONEDAS
+// ══════════════════════════════════════════════════════
+
+const BILLETES = [50, 20, 10, 5];
+const MONEDAS  = [2, 1, 0.50, 0.20];
+
+function toggleConteoBilletes() {
+  const panel = document.getElementById('conteoBilletesPanel');
+  const icon  = document.getElementById('conteoToggleIcon');
+  if (!panel) return;
+  const abierto = panel.style.display !== 'none';
+  panel.style.display = abierto ? 'none' : 'block';
+  icon.textContent = abierto ? '▼' : '▲';
+  if (!abierto) inicializarConteo();
+}
+
+function inicializarConteo() {
+  document.getElementById('conteoFilasBilletes').innerHTML =
+    BILLETES.map(v => filaConteo(v, 'bill')).join('');
+  document.getElementById('conteoFilasMonedas').innerHTML =
+    MONEDAS.map(v => filaConteo(v, 'mon')).join('');
+  actualizarConteoEfectivo();
+}
+
+function filaConteo(valor, prefijo) {
+  const id = prefijo + '_' + String(valor).replace('.','_');
+  const etiqueta = valor >= 1 ? valor + ' €' : (valor * 100).toFixed(0) + ' ct';
+  return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+    <div style="width:64px;text-align:right;font-weight:700;font-size:15px;color:var(--texto)">${etiqueta}</div>
+    <button onclick="cambiarConteo('${id}', -1)" style="width:36px;height:36px;border-radius:10px;border:2px solid #e5e7eb;background:white;font-size:18px;cursor:pointer;font-weight:700;color:var(--gris)">-</button>
+    <input type="number" id="${id}" value="0" min="0" step="1"
+           style="width:60px;text-align:center;border:2px solid #e5e7eb;border-radius:10px;padding:8px;font-size:16px;font-weight:700;font-family:'Lato',sans-serif"
+           oninput="actualizarConteoEfectivo()">
+    <button onclick="cambiarConteo('${id}', 1)" style="width:36px;height:36px;border-radius:10px;border:2px solid #e5e7eb;background:white;font-size:18px;cursor:pointer;font-weight:700;color:var(--verde)">+</button>
+    <div style="flex:1;text-align:right;font-size:13px;color:var(--gris)" id="${id}_sub">0,00 €</div>
+  </div>`;
+}
+
+function cambiarConteo(id, delta) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = Math.max(0, (parseInt(el.value)||0) + delta);
+  actualizarConteoEfectivo();
+}
+
+function actualizarConteoEfectivo() {
+  const panel = document.getElementById('conteoBilletesPanel');
+  if (!panel || panel.style.display === 'none') return;
+  let totalContado = 0;
+  BILLETES.forEach(v => {
+    const id = 'bill_' + String(v).replace('.','_');
+    const n = parseInt(document.getElementById(id)?.value)||0;
+    const subtotal = n * v;
+    totalContado += subtotal;
+    const sub = document.getElementById(id + '_sub');
+    if (sub) sub.textContent = fmtEur(subtotal);
+  });
+  MONEDAS.forEach(v => {
+    const id = 'mon_' + String(v).replace('.','_');
+    const n = parseInt(document.getElementById(id)?.value)||0;
+    const subtotal = Math.round(n * v * 100) / 100;
+    totalContado += subtotal;
+    const sub = document.getElementById(id + '_sub');
+    if (sub) sub.textContent = fmtEur(subtotal);
+  });
+  totalContado = Math.round(totalContado * 100) / 100;
+  const totalContadoEl = document.getElementById('totalContado');
+  if (totalContadoEl) totalContadoEl.textContent = fmtEur(totalContado);
+  const total = parseFloat(document.getElementById('ventaTotal')?.value)||0;
+  const tj    = parseFloat(document.getElementById('ventaTarjeta')?.value)||0;
+  const fondo = parseFloat(document.getElementById('ventaFondo')?.value)||0;
+  const efEsperado = Math.max(0, total - tj) + fondo;
+  const difEl = document.getElementById('diferenciaCaja');
+  if (difEl && efEsperado > 0) {
+    const dif = Math.round((totalContado - efEsperado) * 100) / 100;
+    difEl.style.display = 'block';
+    if (Math.abs(dif) < 0.01) {
+      difEl.style.background = 'var(--verde-suave)'; difEl.style.color = 'var(--verde)';
+      difEl.textContent = '✅ Caja cuadrada perfectamente';
+    } else if (dif > 0) {
+      difEl.style.background = 'var(--naranja-suave)'; difEl.style.color = 'var(--naranja)';
+      difEl.textContent = '⚠️ Sobran ' + fmtEur(Math.abs(dif)) + ' en caja';
+    } else {
+      difEl.style.background = '#fee2e2'; difEl.style.color = 'var(--rojo)';
+      difEl.textContent = '❌ Faltan ' + fmtEur(Math.abs(dif)) + ' en caja';
+    }
+  } else if (difEl) { difEl.style.display = 'none'; }
 }
 
 </script>
