@@ -2235,7 +2235,7 @@ async function guardarProveedor() {
     provs.push(prov);
   }
   setStorage('hcarmen_proveedores', provs);
-  const ok = await syncData('saveProveedor', { proveedor: prov });
+  const ok = await syncData('saveProveedor', { proveedor: prov, isEdit: !!editId });
   if (ok) {
     setStorage('hcarmen_proveedores', getStorage('hcarmen_proveedores').map(p => p.id === prov.id ? {...p, synced:true} : p));
   }
