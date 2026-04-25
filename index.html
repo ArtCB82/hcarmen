@@ -1207,7 +1207,7 @@
     </button>
   </div>
   <div class="menu-grid single">
-    <button class="menu-btn accent" onclick="navTo('screen-estadisticas');renderEstadisticas()">
+    <button class="menu-btn accent" onclick="navTo('screen-estadisticas')">
       <span class="btn-icon">📈</span>
       <span class="btn-label">Estadísticas Avanzadas</span>
       <span class="btn-desc">KPIs, tendencias y comparativas</span>
@@ -1489,12 +1489,45 @@
 <!-- ══════════════════════════════════════
      PANTALLA: ESTADÍSTICAS AVANZADAS
 ════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════
+     PANTALLA: ESTADÍSTICAS — SELECTOR
+════════════════════════════════════════ -->
 <div class="screen" id="screen-estadisticas">
   <div class="header">
     <div class="header-top">
       <button class="btn-back" onclick="navBack()">←</button>
       <div>
         <div class="header-title">Estadísticas</div>
+        <div class="header-subtitle">KPIs y análisis avanzado</div>
+      </div>
+    </div>
+  </div>
+  <div class="scroll-content" style="padding:24px 20px 0">
+    <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin-bottom:16px">Selecciona el análisis</div>
+    <div class="menu-grid">
+      <button class="menu-btn accent" onclick="navTo('screen-stats-ventas');renderEstadisticas()">
+        <span class="btn-icon">📈</span>
+        <span class="btn-label">Ventas y Beneficio</span>
+        <span class="btn-desc">Ingresos, margen y tendencias</span>
+      </button>
+      <button class="menu-btn accent-orange" onclick="navTo('screen-stats-compras');renderStatsCompras()">
+        <span class="btn-icon">🛒</span>
+        <span class="btn-label">Compras y Gastos</span>
+        <span class="btn-desc">Proveedores, costes y variaciones</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: ESTADÍSTICAS VENTAS
+════════════════════════════════════════ -->
+<div class="screen" id="screen-stats-ventas">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Ventas y Beneficio</div>
         <div class="header-subtitle">KPIs y análisis avanzado</div>
       </div>
     </div>
@@ -1565,6 +1598,92 @@
     <div style="padding:0 20px 20px">
       <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Análisis detallado</div>
       <div id="kpiDetalle"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     PANTALLA: ESTADÍSTICAS COMPRAS
+════════════════════════════════════════ -->
+<div class="screen" id="screen-stats-compras">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">←</button>
+      <div>
+        <div class="header-title">Compras y Gastos</div>
+        <div class="header-subtitle">Análisis de costes</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-content">
+    <!-- Filtros período -->
+    <div style="padding:16px 20px 8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="filtro-btn active" id="cfEsteAno" onclick="setFiltroCompras('año')">Este año</button>
+      <button class="filtro-btn" id="cfUlt12" onclick="setFiltroCompras('12m')">Últ. 12 meses</button>
+      <button class="filtro-btn" id="cfUlt6" onclick="setFiltroCompras('6m')">Últ. 6 meses</button>
+      <button class="filtro-btn" id="cfUlt3" onclick="setFiltroCompras('3m')">Últ. 3 meses</button>
+      <button class="filtro-btn" id="cfPersonal" onclick="setFiltroCompras('custom')">📅 Personalizado</button>
+    </div>
+
+    <!-- Rango personalizado -->
+    <div id="comprasCustomRange" style="display:none;padding:0 20px 8px;flex-direction:column;gap:10px">
+      <div style="display:flex;gap:10px;align-items:center">
+        <input type="date" class="field-input" id="comprasDesde" style="flex:1">
+        <span style="color:var(--gris);font-weight:700">→</span>
+        <input type="date" class="field-input" id="comprasHasta" style="flex:1">
+      </div>
+      <button class="btn-submit" style="margin-top:8px" onclick="renderStatsCompras()">Aplicar</button>
+    </div>
+
+    <!-- Filtro tienda -->
+    <div style="padding:0 20px 12px;display:flex;gap:8px">
+      <button class="filtro-btn active" id="cfTiendaTodas" onclick="setFiltroTiendaCompras('todas',this)">Ambas tiendas</button>
+      <button class="filtro-btn" id="cfTienda1" onclick="setFiltroTiendaCompras('tienda1',this)">San Asturio</button>
+      <button class="filtro-btn" id="cfTienda2" onclick="setFiltroTiendaCompras('tienda2',this)">Juan de Guzmán</button>
+    </div>
+
+    <!-- KPI Grid -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin-bottom:10px">Resumen del período</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px" id="kpiGridCompras"></div>
+    </div>
+
+    <!-- Gráfica evolución compras -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Evolución de compras</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">
+        <canvas id="chartComprasEvol" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- Gráfica top proveedores -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Top proveedores</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">
+        <canvas id="chartComprasProv" height="240"></canvas>
+      </div>
+    </div>
+
+    <!-- Distribución compras vs gastos -->
+    <div style="padding:0 20px 8px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Distribución de costes</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);display:flex;align-items:center;gap:20px">
+        <div style="flex:0 0 150px"><canvas id="chartComprasDist" height="150"></canvas></div>
+        <div id="comprasDistLeyenda" style="flex:1;font-size:13px;line-height:1.8"></div>
+      </div>
+    </div>
+
+    <!-- Análisis detallado -->
+    <div style="padding:0 20px 24px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Ranking de proveedores</div>
+      <div id="rankingProveedores"></div>
+
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:20px 0 10px">Gastos por categoría</div>
+      <div id="gastosCategorias"></div>
+
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:20px 0 10px">Tipo de documento</div>
+      <div id="tiposDocumento"></div>
     </div>
   </div>
 </div>
@@ -3540,6 +3659,356 @@ function cambiarInflacion() {
     document.getElementById('inflacionPct').textContent = statsInflacion + '%';
     renderComparativaAnual();
   }
+}
+
+
+// ══════════════════════════════════════════════════════
+// ESTADÍSTICAS COMPRAS Y GASTOS
+// ══════════════════════════════════════════════════════
+
+let comprasFiltroPeriodo = 'año';
+let comprasFiltroTienda = 'todas';
+let chartComprasEvolObj = null;
+let chartComprasProvObj = null;
+let chartComprasDistObj = null;
+
+function setFiltroCompras(periodo) {
+  comprasFiltroPeriodo = periodo;
+  ['cfEsteAno','cfUlt12','cfUlt6','cfUlt3','cfPersonal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('active');
+  });
+  const mapId = { 'año':'cfEsteAno', '12m':'cfUlt12', '6m':'cfUlt6', '3m':'cfUlt3', 'custom':'cfPersonal' };
+  const el = document.getElementById(mapId[periodo]);
+  if (el) el.classList.add('active');
+  const customRange = document.getElementById('comprasCustomRange');
+  if (periodo === 'custom') {
+    customRange.style.display = 'flex';
+  } else {
+    customRange.style.display = 'none';
+    renderStatsCompras();
+  }
+}
+
+function setFiltroTiendaCompras(tienda, btn) {
+  comprasFiltroTienda = tienda;
+  document.querySelectorAll('#cfTiendaTodas,#cfTienda1,#cfTienda2').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderStatsCompras();
+}
+
+function getRangoCompras() {
+  const hoy = new Date();
+  let desde, hasta = new Date(hoy);
+  if (comprasFiltroPeriodo === 'año') {
+    desde = new Date(hoy.getFullYear(), 0, 1);
+  } else if (comprasFiltroPeriodo === '12m') {
+    desde = new Date(hoy.getFullYear()-1, hoy.getMonth()+1, 1);
+  } else if (comprasFiltroPeriodo === '6m') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth()-5, 1);
+  } else if (comprasFiltroPeriodo === '3m') {
+    desde = new Date(hoy.getFullYear(), hoy.getMonth()-2, 1);
+  } else if (comprasFiltroPeriodo === 'custom') {
+    const d = document.getElementById('comprasDesde').value;
+    const h = document.getElementById('comprasHasta').value;
+    if (!d || !h) return null;
+    desde = new Date(d); hasta = new Date(h);
+  }
+  return { desde, hasta };
+}
+
+function renderStatsCompras() {
+  const rango = getRangoCompras();
+  if (!rango) return;
+
+  const todasF = getStorage('hcarmen_facturas');
+  const todosG = getStorage('hcarmen_gastos');
+
+  function enRango(fecha) {
+    const d = new Date(fecha);
+    return d >= rango.desde && d <= rango.hasta;
+  }
+  function deTienda(x) {
+    return comprasFiltroTienda === 'todas' || x.tienda === comprasFiltroTienda;
+  }
+
+  const facturas = todasF.filter(f => f.fecha && enRango(f.fecha) && deTienda(f));
+  const gastos   = todosG.filter(g => g.fecha && enRango(g.fecha) && deTienda(g));
+
+  const totalCompras = facturas.reduce((s,f) => s+(f.importeTotal||0), 0);
+  const totalGastos  = gastos.reduce((s,g) => s+(g.importe||0), 0);
+  const totalCostes  = totalCompras + totalGastos;
+  const nFacturas    = facturas.length;
+  const facturaMedia = nFacturas > 0 ? totalCompras / nFacturas : 0;
+  const pctGastos    = totalCostes > 0 ? (totalGastos / totalCostes * 100) : 0;
+
+  // Proveedor principal
+  const byProv = {};
+  facturas.forEach(f => {
+    const k = f.proveedor || 'Sin nombre';
+    byProv[k] = (byProv[k]||0) + (f.importeTotal||0);
+  });
+  const topProv = Object.entries(byProv).sort((a,b) => b[1]-a[1]);
+  const provPrincipal = topProv.length ? topProv[0][0] : '—';
+  const provPrincipalTotal = topProv.length ? topProv[0][1] : 0;
+
+  // Variación vs período anterior equivalente
+  const durMs = rango.hasta.getTime() - rango.desde.getTime();
+  const desdeAnt = new Date(rango.desde.getTime() - durMs);
+  const hastaAnt = new Date(rango.desde.getTime() - 1);
+  const facturasAnt = todasF.filter(f => {
+    if (!f.fecha) return false;
+    const d = new Date(f.fecha);
+    return d >= desdeAnt && d <= hastaAnt && deTienda(f);
+  });
+  const totalAnt = facturasAnt.reduce((s,f) => s+(f.importeTotal||0), 0);
+  const varPct = totalAnt > 0 ? ((totalCompras - totalAnt) / totalAnt * 100) : null;
+
+  // ── KPI Grid ──
+  const colores = { verde:'var(--verde)', naranja:'var(--naranja)', rojo:'var(--rojo)', normal:'var(--texto)' };
+  const fondos  = { verde:'var(--verde-suave)', naranja:'var(--naranja-suave)', rojo:'#fee2e2', normal:'white' };
+
+  const varColor  = varPct === null ? 'normal' : varPct > 10 ? 'rojo' : varPct > 0 ? 'naranja' : 'verde';
+  const varValor  = varPct === null ? '—' : (varPct > 0 ? '↑ ' : '↓ ') + Math.abs(varPct).toFixed(1) + '%';
+  const varSub    = totalAnt > 0 ? 'Anterior: ' + fmtEur(totalAnt) : 'Sin datos del período anterior';
+  const nombreCorto = provPrincipal.length > 15 ? provPrincipal.slice(0,13)+'…' : provPrincipal;
+
+  const kpis = [
+    { label:'Total compras',           valor: fmtEur(totalCompras),           sub: nFacturas + ' facturas/albaranes',              color:'naranja' },
+    { label:'Total gastos fijos',      valor: fmtEur(totalGastos),            sub: gastos.length + ' gastos registrados',           color:'naranja' },
+    { label:'Coste total',             valor: fmtEur(totalCostes),            sub: 'Compras + gastos fijos',                        color:'normal'  },
+    { label:'Factura media',           valor: nFacturas ? fmtEur(facturaMedia) : '—', sub: 'Por documento recibido',               color:'normal'  },
+    { label:'Vs período anterior',     valor: varValor,                       sub: varSub,                                          color: varColor },
+    { label:'% Gastos s/coste total',  valor: pctGastos.toFixed(1) + '%',     sub: 'Gastos fijos sobre coste',                      color: pctGastos > 30 ? 'rojo' : 'normal' },
+    { label:'Proveedor principal',     valor: nombreCorto,                    sub: topProv.length ? fmtEur(provPrincipalTotal) : '—', color:'verde' },
+    { label:'Proveedores activos',     valor: topProv.length.toString(),      sub: 'Con compras en el período',                     color:'normal'  },
+  ];
+
+  document.getElementById('kpiGridCompras').innerHTML = kpis.map(k =>
+    '<div style="background:' + fondos[k.color] + ';border-radius:14px;padding:14px;box-shadow:var(--sombra)">' +
+      '<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:' + colores[k.color] + ';font-weight:700;margin-bottom:4px;opacity:0.8">' + k.label + '</div>' +
+      '<div style="font-size:20px;font-weight:900;font-family:\'Playfair Display\',serif;color:' + colores[k.color] + '">' + k.valor + '</div>' +
+      '<div style="font-size:11px;color:' + colores[k.color] + ';opacity:0.7;margin-top:2px">' + k.sub + '</div>' +
+    '</div>'
+  ).join('');
+
+  // ── Chart 1: Evolución compras por mes ──
+  const meses = getMesesEnRango(rango);
+  const labels = meses.map(function(x) {
+    return MESES[x.m].slice(0,3) + (meses.length > 12 ? '\'' + String(x.y).slice(2) : '');
+  });
+  const comprasPorMes = meses.map(function(x) {
+    return facturas.filter(function(f) {
+      var d = new Date(f.fecha); return d.getFullYear()===x.y && d.getMonth()===x.m;
+    }).reduce(function(s,f) { return s+(f.importeTotal||0); }, 0);
+  });
+  const gastosPorMes = meses.map(function(x) {
+    return gastos.filter(function(g) {
+      var d = new Date(g.fecha); return d.getFullYear()===x.y && d.getMonth()===x.m;
+    }).reduce(function(s,g) { return s+(g.importe||0); }, 0);
+  });
+
+  function tendC(arr) {
+    var n = arr.length;
+    if (n < 2) return arr;
+    var sumX=0,sumY=0,sumXY=0,sumX2=0;
+    arr.forEach(function(v,i){sumX+=i;sumY+=v;sumXY+=i*v;sumX2+=i*i;});
+    var slope=(n*sumXY-sumX*sumY)/(n*sumX2-sumX*sumX);
+    var inter=(sumY-slope*sumX)/n;
+    return arr.map(function(_,i){ return Math.round((slope*i+inter)*100)/100; });
+  }
+
+  const ctx1 = document.getElementById('chartComprasEvol').getContext('2d');
+  if (chartComprasEvolObj) chartComprasEvolObj.destroy();
+  chartComprasEvolObj = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label:'Compras',      data: comprasPorMes, backgroundColor:'rgba(224,122,47,0.75)', borderColor:'#e07a2f', borderWidth:1, stack:'costes' },
+        { label:'Gastos fijos', data: gastosPorMes,  backgroundColor:'rgba(193,68,14,0.65)',  borderColor:'#c1440e', borderWidth:1, stack:'costes' },
+        { label:'Tendencia compras', data: tendC(comprasPorMes), type:'line', borderColor:'#1d4ed8', borderWidth:2, pointRadius:0, fill:false, tension:0.4, stack:undefined }
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ position:'bottom' } }, scales:{ x:{ stacked:true }, y:{ stacked:true, beginAtZero:true, ticks:{ callback: function(v){ return v+'€'; } } } } }
+  });
+
+  // ── Chart 2: Top proveedores (barras horizontales) ──
+  const top8 = topProv.slice(0, 8);
+  const ctx2 = document.getElementById('chartComprasProv').getContext('2d');
+  if (chartComprasProvObj) chartComprasProvObj.destroy();
+  if (top8.length) {
+    chartComprasProvObj = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: top8.map(function(x) { var n=x[0]; return n.length>22?n.slice(0,20)+'…':n; }),
+        datasets: [{
+          label: 'Total compras',
+          data: top8.map(function(x){ return x[1]; }),
+          backgroundColor: top8.map(function(_,i){ return 'hsl('+(30+i*18)+',70%,'+(45+i*3)+'%)'; }),
+          borderRadius: 5
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend:{ display:false } },
+        scales: { x:{ beginAtZero:true, ticks:{ callback: function(v){ return v+'€'; } } } }
+      }
+    });
+  } else {
+    document.getElementById('chartComprasProv').parentElement.innerHTML =
+      '<div style="text-align:center;color:var(--gris);padding:30px;font-size:14px">Sin datos de compras en este período</div>';
+  }
+
+  // ── Chart 3: Donut compras vs gastos ──
+  const ctx3 = document.getElementById('chartComprasDist').getContext('2d');
+  if (chartComprasDistObj) chartComprasDistObj.destroy();
+  if (totalCostes > 0) {
+    chartComprasDistObj = new Chart(ctx3, {
+      type: 'doughnut',
+      data: {
+        labels: ['Compras','Gastos fijos'],
+        datasets: [{
+          data: [totalCompras, totalGastos],
+          backgroundColor: ['rgba(224,122,47,0.85)','rgba(193,68,14,0.75)'],
+          borderColor: ['#e07a2f','#c1440e'],
+          borderWidth: 2
+        }]
+      },
+      options: { responsive:true, plugins:{ legend:{ display:false } }, cutout:'65%' }
+    });
+    var pC = (totalCompras/totalCostes*100).toFixed(1);
+    var pG = (totalGastos/totalCostes*100).toFixed(1);
+    document.getElementById('comprasDistLeyenda').innerHTML =
+      '<div><span style="display:inline-block;width:12px;height:12px;background:#e07a2f;border-radius:3px;margin-right:6px"></span>Compras: <strong>' + fmtEur(totalCompras) + '</strong> (' + pC + '%)</div>' +
+      '<div style="margin-top:8px"><span style="display:inline-block;width:12px;height:12px;background:#c1440e;border-radius:3px;margin-right:6px"></span>Gastos fijos: <strong>' + fmtEur(totalGastos) + '</strong> (' + pG + '%)</div>';
+  } else {
+    document.getElementById('comprasDistLeyenda').innerHTML = '<div style="color:var(--gris);font-size:13px">Sin datos en este período</div>';
+  }
+
+  // ── Ranking detallado de proveedores ──
+  renderRankingProveedores(facturas, rango);
+
+  // ── Gastos por categoría ──
+  renderGastosCategorias(gastos);
+
+  // ── Tipo de documento ──
+  renderTiposDocumento(facturas);
+}
+
+function renderRankingProveedores(facturas, rango) {
+  var byProv = {};
+  facturas.forEach(function(f) {
+    var k = f.proveedor || 'Sin nombre';
+    if (!byProv[k]) byProv[k] = { nombre:k, total:0, count:0, facturas:[] };
+    byProv[k].total += (f.importeTotal||0);
+    byProv[k].count++;
+    byProv[k].facturas.push(f);
+  });
+
+  var mid = new Date((rango.desde.getTime() + rango.hasta.getTime()) / 2);
+  var ranking = Object.values(byProv).sort(function(a,b){ return b.total-a.total; });
+  ranking.forEach(function(p) {
+    var primera = p.facturas.filter(function(f){ return new Date(f.fecha) <= mid; });
+    var segunda  = p.facturas.filter(function(f){ return new Date(f.fecha) > mid; });
+    var mediaP = primera.length ? primera.reduce(function(s,f){return s+(f.importeTotal||0);},0)/primera.length : null;
+    var mediaS = segunda.length  ? segunda.reduce(function(s,f){return s+(f.importeTotal||0);},0)/segunda.length  : null;
+    p.media = p.count > 0 ? p.total / p.count : 0;
+    p.variacion = (mediaP !== null && mediaS !== null) ? ((mediaS-mediaP)/mediaP*100) : null;
+  });
+
+  var el = document.getElementById('rankingProveedores');
+  if (!ranking.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--gris);padding:20px;font-size:14px">Sin compras en este período</div>';
+    return;
+  }
+
+  el.innerHTML = ranking.map(function(p, i) {
+    var bg    = i < 3 ? 'var(--verde)'   : '#e5e7eb';
+    var fg    = i < 3 ? 'white'          : 'var(--gris)';
+    var varHtml = '';
+    if (p.variacion !== null) {
+      var vc = p.variacion > 5 ? 'var(--rojo)' : p.variacion > 0 ? 'var(--naranja)' : 'var(--verde)';
+      varHtml = ' <span style="font-size:12px;font-weight:700;color:' + vc + '">' + (p.variacion>0?'↑':'↓') + ' ' + Math.abs(p.variacion).toFixed(1) + '%</span>';
+    }
+    return '<div style="background:white;border-radius:12px;padding:12px 16px;box-shadow:var(--sombra);margin-bottom:8px;display:flex;align-items:center;gap:12px">' +
+      '<div style="width:28px;height:28px;background:' + bg + ';border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:' + fg + ';flex-shrink:0">' + (i+1) + '</div>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + p.nombre + '</div>' +
+        '<div style="font-size:12px;color:var(--gris)">' + p.count + ' doc. · media ' + fmtEur(p.media) + varHtml + '</div>' +
+      '</div>' +
+      '<div style="font-weight:900;font-size:16px;font-family:\'Playfair Display\',serif;color:var(--naranja);flex-shrink:0">' + fmtEur(p.total) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderGastosCategorias(gastos) {
+  var byCat = {};
+  gastos.forEach(function(g) {
+    var k = g.categoria || 'Otros';
+    byCat[k] = (byCat[k]||0) + (g.importe||0);
+  });
+  var cats  = Object.entries(byCat).sort(function(a,b){ return b[1]-a[1]; });
+  var total = cats.reduce(function(s,x){ return s+x[1]; }, 0);
+  var el    = document.getElementById('gastosCategorias');
+
+  if (!cats.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--gris);padding:16px;font-size:14px">Sin gastos en este período</div>';
+    return;
+  }
+
+  var iconos = { Suministros:'💡', Alquiler:'🏠', Personal:'👥', Seguros:'🛡️', Impuestos:'📋', Limpieza:'🧹', Marketing:'📣', Mantenimiento:'🔧', Otros:'📦', Transporte:'🚚', Comunicaciones:'📱' };
+
+  el.innerHTML = '<div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">' +
+    cats.map(function(x) {
+      var cat = x[0], imp = x[1];
+      var pct = total > 0 ? (imp/total*100) : 0;
+      return '<div style="margin-bottom:14px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:5px">' +
+          '<span style="font-size:13px;font-weight:600">' + (iconos[cat]||'📦') + ' ' + cat + '</span>' +
+          '<span style="font-size:13px;font-weight:700;color:var(--naranja)">' + fmtEur(imp) + ' <span style="font-weight:400;color:var(--gris);font-size:11px">(' + pct.toFixed(0) + '%)</span></span>' +
+        '</div>' +
+        '<div style="height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:var(--naranja);border-radius:4px;transition:width 0.5s"></div>' +
+        '</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
+}
+
+function renderTiposDocumento(facturas) {
+  var byTipo = {};
+  facturas.forEach(function(f) {
+    var k = (f.tipo||'factura').toLowerCase();
+    if (!byTipo[k]) byTipo[k] = { count:0, total:0 };
+    byTipo[k].count++;
+    byTipo[k].total += (f.importeTotal||0);
+  });
+  var tipos = Object.entries(byTipo).sort(function(a,b){ return b[1].total-a[1].total; });
+  var el    = document.getElementById('tiposDocumento');
+
+  if (!tipos.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--gris);padding:16px;font-size:14px">Sin documentos en este período</div>';
+    return;
+  }
+
+  var iconoTipo = { factura:'🧾', albaran:'📋', ticket:'🎫' };
+  var n = facturas.length;
+
+  el.innerHTML = '<div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra);display:flex;gap:10px;flex-wrap:wrap">' +
+    tipos.map(function(x) {
+      var tipo = x[0], d = x[1];
+      var pct = n > 0 ? (d.count/n*100).toFixed(0) : 0;
+      return '<div style="flex:1;min-width:90px;text-align:center;background:var(--crema-oscura);border-radius:12px;padding:14px">' +
+        '<div style="font-size:26px">' + (iconoTipo[tipo]||'📄') + '</div>' +
+        '<div style="font-size:11px;font-weight:700;text-transform:capitalize;margin:5px 0 2px">' + tipo + 's</div>' +
+        '<div style="font-size:20px;font-weight:900;font-family:\'Playfair Display\',serif;color:var(--naranja)">' + d.count + '</div>' +
+        '<div style="font-size:11px;color:var(--gris);margin-top:2px">' + fmtEur(d.total) + '</div>' +
+        '<div style="font-size:10px;color:var(--gris)">' + pct + '% del total</div>' +
+      '</div>';
+    }).join('') +
+  '</div>';
 }
 
 
