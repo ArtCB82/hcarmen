@@ -2110,6 +2110,136 @@ function setStorage(key, data) {
   localStorage.setItem(key, JSON.stringify(data));
 }
 
+// ── PROVEEDORES ──
+let proveedorSeleccionado = null;
+
+function getProveedores() {
+  try { return JSON.parse(localStorage.getItem('hcarmen_proveedores')) || []; }
+  catch { return []; }
+}
+
+function seleccionarProveedor(id) {
+  const provs = getProveedores();
+  const p = provs.find(x => x.id === id);
+  if (!p) return;
+  proveedorSeleccionado = p;
+  document.getElementById('factProveedor').value = p.razonSocial;
+  document.getElementById('autocompleteBox').style.display = 'none';
+  const badge = document.getElementById('provBadge');
+  badge.innerHTML = '<div class="prov-badge"><div class="prov-badge-info"><span class="prov-badge-nombre">✓ ' + p.razonSocial + '</span><span class="prov-badge-cif">' + (p.cif || '') + '</span></div><button class="btn-cambiar-prov" onclick="resetProveedor()">Cambiar</button></div>';
+  badge.style.display = 'block';
+  document.getElementById('provInputWrapper').style.display = 'none';
+}
+
+function resetProveedor() {
+  proveedorSeleccionado = null;
+  document.getElementById('factProveedor').value = '';
+  document.getElementById('provBadge').style.display = 'none';
+  document.getElementById('provInputWrapper').style.display = 'block';
+}
+
+function buscarProveedor(texto) {
+  const box = document.getElementById('autocompleteBox');
+  if (proveedorSeleccionado) { box.style.display = 'none'; return; }
+  const provs = getProveedores();
+  const matches = provs.filter(p => p.razonSocial.toLowerCase().includes(texto.toLowerCase()));
+  if (!texto && !matches.length) { box.style.display = 'none'; return; }
+  let html = matches.map(p => '<div class="autocomplete-item" onclick="seleccionarProveedor(\'' + p.id + '\')"><span class="prov-nombre">' + p.razonSocial + '</span><span class="prov-cif">' + (p.cif || '') + '</span></div>').join('');
+  html += '<div class="autocomplete-nuevo" onclick="mostrarModalProveedor()">➕ Crear nuevo proveedor</div>';
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
+function mostrarModalProveedor(id) {
+  const modal = document.getElementById('modalProveedor');
+  const titulo = document.getElementById('modalProvTitulo');
+  document.getElementById('editProvId').value = id || '';
+  if (id) {
+    const p = getProveedores().find(x => x.id === id);
+    if (!p) return;
+    titulo.textContent = 'Editar proveedor';
+    document.getElementById('pRazonSocial').value = p.razonSocial || '';
+    document.getElementById('pCif').value = p.cif || '';
+    document.getElementById('pTelefono').value = p.telefono || '';
+    document.getElementById('pEmail').value = p.email || '';
+    document.getElementById('pWeb').value = p.web || '';
+    document.getElementById('pDireccion').value = p.direccion || '';
+    document.getElementById('pContactoNombre').value = p.contactoNombre || '';
+    document.getElementById('pContactoTel').value = p.contactoTel || '';
+    document.getElementById('pContactoEmail').value = p.contactoEmail || '';
+    document.getElementById('pIban').value = p.iban || '';
+    document.getElementById('pNotas').value = p.notas || '';
+  } else {
+    titulo.textContent = 'Nuevo proveedor';
+    ['pRazonSocial','pCif','pTelefono','pEmail','pWeb','pDireccion','pContactoNombre','pContactoTel','pContactoEmail','pIban','pNotas'].forEach(id => { document.getElementById(id).value = ''; });
+  }
+  modal.style.display = 'flex';
+}
+
+function cerrarModalProveedor() {
+  document.getElementById('modalProveedor').style.display = 'none';
+}
+
+async function guardarProveedor() {
+  const razonSocial = document.getElementById('pRazonSocial').value.trim();
+  if (!razonSocial) { showToast('La razón social es obligatoria', 'error'); return; }
+  const provs = getProveedores();
+  const editId = document.getElementById('editProvId').value;
+  const prov = {
+    id: editId || getId(),
+    razonSocial,
+    cif: document.getElementById('pCif').value.trim(),
+    telefono: document.getElementById('pTelefono').value.trim(),
+    email: document.getElementById('pEmail').value.trim(),
+    web: document.getElementById('pWeb').value.trim(),
+    direccion: document.getElementById('pDireccion').value.trim(),
+    contactoNombre: document.getElementById('pContactoNombre').value.trim(),
+    contactoTel: document.getElementById('pContactoTel').value.trim(),
+    contactoEmail: document.getElementById('pContactoEmail').value.trim(),
+    iban: document.getElementById('pIban').value.trim(),
+    notas: document.getElementById('pNotas').value.trim(),
+    synced: false
+  };
+  if (editId) {
+    const idx = provs.findIndex(p => p.id === editId);
+    if (idx >= 0) provs[idx] = prov; else provs.push(prov);
+  } else {
+    provs.push(prov);
+  }
+  setStorage('hcarmen_proveedores', provs);
+  const ok = await syncData('saveProveedor', { proveedor: prov });
+  if (ok) {
+    setStorage('hcarmen_proveedores', getStorage('hcarmen_proveedores').map(p => p.id === prov.id ? {...p, synced:true} : p));
+  }
+  cerrarModalProveedor();
+  renderListaProveedores('');
+  showToast(ok ? '✓ Proveedor guardado y sincronizado' : '✓ Guardado localmente', ok ? 'ok' : '');
+  registrarLog('PROVEEDOR', (editId ? 'Editado: ' : 'Nuevo: ') + razonSocial);
+}
+
+function renderListaProveedores(filtro) {
+  const provs = getProveedores().filter(p =>
+    !filtro || p.razonSocial.toLowerCase().includes(filtro.toLowerCase()) || (p.cif||'').toLowerCase().includes(filtro.toLowerCase())
+  );
+  const lista = document.getElementById('listaProveedores');
+  if (!lista) return;
+  if (!provs.length) {
+    lista.innerHTML = '<div class="empty-state"><div class="empty-icon">🏢</div><h3>Sin proveedores</h3><p>Añade tu primer proveedor.</p></div>';
+    return;
+  }
+  lista.innerHTML = provs.map(p => '<div class="item-card"><div class="item-tipo-dot factura">🏢</div><div class="item-info"><div class="item-titulo">' + p.razonSocial + '</div><div class="item-meta"><span>' + (p.cif||'Sin CIF') + '</span>' + (p.telefono ? '<span>' + p.telefono + '</span>' : '') + '</div><div class="item-synced">' + (p.synced ? '☁️ Sincronizado' : '⏳ Pendiente') + '</div></div><div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button onclick="mostrarModalProveedor(\'' + p.id + '\')" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">✏️ Editar</button><button onclick="borrarProveedor(\'' + p.id + '\')" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">🗑 Borrar</button></div></div>').join('');
+}
+
+async function borrarProveedor(id) {
+  const p = getProveedores().find(x => x.id === id);
+  if (!p) return;
+  if (!confirm('¿Borrar el proveedor "' + p.razonSocial + '"?')) return;
+  setStorage('hcarmen_proveedores', getProveedores().filter(x => x.id !== id));
+  await syncData('deleteProveedor', { id });
+  renderListaProveedores(document.getElementById('buscadorProveedores')?.value || '');
+  showToast('Proveedor eliminado', 'ok');
+}
+
 // ── GUARDAR FACTURA ──
 async function guardarFactura() {
   if (!tiendaFact) { showToast('Selecciona una tienda', 'error'); return; }
@@ -2649,9 +2779,8 @@ function resetFormFactura() {
   document.getElementById('ocrResultDiv').style.display = 'none';
   document.getElementById('photoPreview').style.display = 'none';
   document.getElementById('cameraOverlay').style.display = 'flex';
-  document.getElementById('provBadge').style.display = 'none';
+  resetProveedor();
   document.getElementById('autocompleteBox').style.display = 'none';
-  proveedorSeleccionado = null;
   tiendaFact = null;
   fotoBase64 = null;
   document.getElementById('tiendaBtn1').classList.remove('selected');
