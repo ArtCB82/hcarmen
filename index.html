@@ -923,7 +923,25 @@
     background: var(--verde-suave);
     border-radius: 0 0 12px 12px;
   }
-  .input-wrapper { position: relative; }
+  .input-wrapper { position: relative; display: flex; gap: 8px; align-items: center; }
+  .input-wrapper .field-input { flex: 1; min-width: 0; width: auto; }
+  .btn-nuevo-prov {
+    flex-shrink: 0;
+    background: var(--verde);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .btn-nuevo-prov:active { opacity: 0.8; }
   .prov-badge {
     background: var(--verde-suave);
     border: 1.5px solid var(--verde-claro);
@@ -1258,11 +1276,11 @@
       <div class="field-group">
         <div class="field-label">Proveedor</div>
         <div class="input-wrapper" id="provInputWrapper">
-          <input type="text" class="field-input" id="factProveedor" 
+          <input type="text" class="field-input" id="factProveedor"
                  placeholder="Escribe para buscar proveedor..."
                  autocomplete="off"
-                 oninput="buscarProveedor(this.value)"
-                 onfocus="buscarProveedor(this.value)">
+                 oninput="buscarProveedor(this.value)">
+          <button class="btn-nuevo-prov" onclick="mostrarModalProveedor()" title="Crear nuevo proveedor">+</button>
           <div class="autocomplete-box" id="autocompleteBox" style="display:none"></div>
         </div>
         <div id="provBadge" style="display:none"></div>
@@ -1822,6 +1840,15 @@ function fmtEur(n) {
   return (n||0).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
 }
 
+// ── CERRAR AUTOCOMPLETE AL HACER CLICK FUERA ──
+document.addEventListener('click', e => {
+  const wrapper = document.getElementById('provInputWrapper');
+  if (wrapper && !wrapper.contains(e.target)) {
+    const box = document.getElementById('autocompleteBox');
+    if (box) box.style.display = 'none';
+  }
+});
+
 // ── INIT ──
 document.addEventListener('DOMContentLoaded', async () => {
   const hoy = new Date();
@@ -2140,12 +2167,13 @@ function resetProveedor() {
 
 function buscarProveedor(texto) {
   const box = document.getElementById('autocompleteBox');
-  if (proveedorSeleccionado) { box.style.display = 'none'; return; }
+  if (proveedorSeleccionado || !texto.trim()) { box.style.display = 'none'; return; }
   const provs = getProveedores();
   const matches = provs.filter(p => p.razonSocial.toLowerCase().includes(texto.toLowerCase()));
-  if (!texto && !matches.length) { box.style.display = 'none'; return; }
   let html = matches.map(p => '<div class="autocomplete-item" onclick="seleccionarProveedor(\'' + p.id + '\')"><span class="prov-nombre">' + p.razonSocial + '</span><span class="prov-cif">' + (p.cif || '') + '</span></div>').join('');
-  html += '<div class="autocomplete-nuevo" onclick="mostrarModalProveedor()">➕ Crear nuevo proveedor</div>';
+  if (!matches.length) {
+    html = '<div class="autocomplete-nuevo" onclick="mostrarModalProveedor()">➕ Crear nuevo proveedor</div>';
+  }
   box.innerHTML = html;
   box.style.display = 'block';
 }
