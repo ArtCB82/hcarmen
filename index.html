@@ -503,6 +503,23 @@
   .stat-card.full { grid-column: 1 / -1; }
   .stat-card.verde { background: linear-gradient(135deg, var(--verde) 0%, var(--verde-claro) 100%); color: white; }
   .stat-card.naranja { background: linear-gradient(135deg, var(--naranja) 0%, #f4a261 100%); color: white; }
+  .stat-card.rojo { background: linear-gradient(135deg, #c1440e 0%, #e07a2f 100%); color: white; }
+  .stat-card .stat-valor-acento { font-size: 20px; font-weight: 900; font-family: 'Playfair Display', serif; }
+
+  .btn-pdf {
+    width: 100%;
+    padding: 14px;
+    background: #1d4ed8;
+    color: white;
+    border: none;
+    border-radius: var(--radio);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+    letter-spacing: 0.3px;
+  }
+  .btn-pdf:active { opacity: 0.85; }
   .stat-label {
     font-size: 11px;
     text-transform: uppercase;
@@ -1595,9 +1612,12 @@
     </div>
 
     <!-- KPIs detallados -->
-    <div style="padding:0 20px 20px">
+    <div style="padding:0 20px 8px">
       <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:16px 0 10px">Análisis detallado</div>
       <div id="kpiDetalle"></div>
+    </div>
+    <div style="padding:8px 20px 28px">
+      <button class="btn-pdf" onclick="generarPDFVentas()">📄 Exportar informe PDF</button>
     </div>
   </div>
 </div>
@@ -1684,6 +1704,10 @@
 
       <div style="font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);margin:20px 0 10px">Tipo de documento</div>
       <div id="tiposDocumento"></div>
+
+      <div style="margin-top:20px">
+        <button class="btn-pdf" onclick="generarPDFCompras()">📄 Exportar informe PDF</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1858,6 +1882,20 @@
 
     <div class="section-label">Por Tienda</div>
     <div class="tienda-breakdown" id="tiendaBreakdown"></div>
+
+    <div class="section-label" style="margin-top:4px">Indicadores clave</div>
+    <div class="stats-grid" id="resumenKpisExtra"></div>
+
+    <div style="padding:0 20px 8px">
+      <div class="section-label" style="padding:0 0 10px">Ventas semanales del mes</div>
+      <div style="background:white;border-radius:var(--radio);padding:16px;box-shadow:var(--sombra)">
+        <canvas id="chartResumenMes" height="180"></canvas>
+      </div>
+    </div>
+
+    <div style="padding:8px 20px 28px">
+      <button class="btn-pdf" onclick="generarPDFResumen()">📄 Exportar informe PDF</button>
+    </div>
   </div>
 </div>
 
@@ -2846,6 +2884,77 @@ function renderResumen() {
       <div class="tienda-row-total" style="color:${tb>=0?'var(--verde)':'var(--rojo)'}">${fmtEur(tb)}</div>
     </div>`;
   }).join('');
+
+  // ── KPIs extra ──
+  const margenPct      = totalVentas > 0 ? (beneficio / totalVentas * 100) : 0;
+  const cvPct          = totalVentas > 0 ? (totalCompras / totalVentas * 100) : 0;
+  const diasConVentas  = ventas.length;
+  const ventaMediaDia  = diasConVentas > 0 ? totalVentas / diasConVentas : 0;
+  const mesAntY = m === 0 ? y - 1 : y;
+  const mesAntM = m === 0 ? 11 : m - 1;
+  const ventasMesAnt   = getStorage('hcarmen_ventas').filter(v => enMes(v.fecha, mesAntY, mesAntM));
+  const totalMesAnt    = ventasMesAnt.reduce((s,v) => s + v.total, 0);
+  const varMes         = totalMesAnt > 0 ? ((totalVentas - totalMesAnt) / totalMesAnt * 100) : null;
+
+  const kpisExtra = [
+    { label:'Margen neto',        valor: margenPct.toFixed(1) + '%',
+      sub: 'Beneficio / Ventas', cls: margenPct >= 20 ? 'verde' : margenPct >= 8 ? '' : 'rojo' },
+    { label:'% Compras / Ventas', valor: cvPct.toFixed(1) + '%',
+      sub: 'Objetivo < 70%',     cls: cvPct < 70 ? '' : 'rojo' },
+    { label:'Venta media / día',  valor: fmtEur(ventaMediaDia),
+      sub: diasConVentas + ' días registrados', cls: '' },
+    { label:'Vs mes anterior',    valor: varMes === null ? '—' : (varMes >= 0 ? '↑ ' : '↓ ') + Math.abs(varMes).toFixed(1) + '%',
+      sub: totalMesAnt > 0 ? 'Anterior: ' + fmtEur(totalMesAnt) : 'Sin datos anteriores',
+      cls: varMes === null ? '' : varMes >= 0 ? 'verde' : 'rojo' },
+  ];
+  document.getElementById('resumenKpisExtra').innerHTML = kpisExtra.map(k =>
+    '<div class="stat-card ' + k.cls + '">' +
+      '<div class="stat-label">' + k.label + '</div>' +
+      '<div class="stat-value small">' + k.valor + '</div>' +
+      '<div class="stat-sub" style="margin-top:3px;font-size:10px;opacity:0.75">' + k.sub + '</div>' +
+    '</div>'
+  ).join('');
+
+  // ── Gráfica ventas semanales ──
+  const semanas = [
+    { label:'Sem 1', d1:1,  d2:7  },
+    { label:'Sem 2', d1:8,  d2:14 },
+    { label:'Sem 3', d1:15, d2:21 },
+    { label:'Sem 4', d1:22, d2:28 },
+    { label:'Sem 5', d1:29, d2:31 },
+  ];
+  const diasMes = new Date(y, m + 1, 0).getDate();
+  const semsValidas = semanas.filter(s => s.d1 <= diasMes);
+
+  const ventasSem = semsValidas.map(s =>
+    ventas.filter(v => { const d = new Date(v.fecha).getDate(); return d >= s.d1 && d <= s.d2; })
+          .reduce((acc, v) => acc + v.total, 0)
+  );
+  const costesSem = semsValidas.map(s => {
+    const cf = facturas.filter(f => { const d = new Date(f.fecha).getDate(); return d >= s.d1 && d <= s.d2; })
+                       .reduce((acc, f) => acc + f.importeTotal, 0);
+    const cg = gastos.filter(g => { const d = new Date(g.fecha).getDate(); return d >= s.d1 && d <= s.d2; })
+                     .reduce((acc, g) => acc + g.importe, 0);
+    return cf + cg;
+  });
+
+  const ctxR = document.getElementById('chartResumenMes').getContext('2d');
+  if (chartResumenMesObj) chartResumenMesObj.destroy();
+  chartResumenMesObj = new Chart(ctxR, {
+    type: 'bar',
+    data: {
+      labels: semsValidas.map(s => s.label),
+      datasets: [
+        { label:'Ventas',  data: ventasSem,  backgroundColor:'rgba(45,106,79,0.75)',  borderColor:'#2d6a4f', borderWidth:1 },
+        { label:'Costes',  data: costesSem,  backgroundColor:'rgba(224,122,47,0.65)', borderColor:'#e07a2f', borderWidth:1 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend:{ position:'bottom' } },
+      scales: { y:{ beginAtZero:true, ticks:{ callback: v => v + '€' } } }
+    }
+  });
 }
 
 // ── PROVEEDORES ──
@@ -3668,6 +3777,7 @@ function cambiarInflacion() {
 
 let comprasFiltroPeriodo = 'año';
 let comprasFiltroTienda = 'todas';
+let chartResumenMesObj  = null;
 let chartComprasEvolObj = null;
 let chartComprasProvObj = null;
 let chartComprasDistObj = null;
@@ -4009,6 +4119,265 @@ function renderTiposDocumento(facturas) {
       '</div>';
     }).join('') +
   '</div>';
+}
+
+
+// ══════════════════════════════════════════════════════
+// GENERACIÓN DE INFORMES PDF
+// ══════════════════════════════════════════════════════
+
+function _pdfStyles() {
+  return `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:12px;color:#1a1a1a;padding:24px 32px}
+    .cabecera{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #2d6a4f;padding-bottom:14px;margin-bottom:22px}
+    .cab-izq h1{font-size:22px;font-weight:800;color:#2d6a4f;letter-spacing:-0.5px}
+    .cab-izq p{font-size:12px;color:#888;margin-top:3px}
+    .cab-der{text-align:right;font-size:11px;color:#aaa;line-height:1.6}
+    .seccion{margin-bottom:22px}
+    .sec-titulo{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:#999;border-bottom:1px solid #eee;padding-bottom:5px;margin-bottom:12px}
+    .kpi-grid{display:grid;gap:10px}
+    .kpi-grid.col4{grid-template-columns:repeat(4,1fr)}
+    .kpi-grid.col3{grid-template-columns:repeat(3,1fr)}
+    .kpi-grid.col2{grid-template-columns:repeat(2,1fr)}
+    .kpi{background:#f7f7f5;border-radius:8px;padding:10px 12px}
+    .kpi.verde{background:#d8f3e8}.kpi.naranja{background:#fff4eb}.kpi.rojo{background:#fee8e3}.kpi.azul{background:#eff6ff}
+    .kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#888}
+    .kpi-valor{font-size:19px;font-weight:800;color:#1a1a1a;margin:3px 0 1px;line-height:1}
+    .kpi.verde .kpi-valor{color:#2d6a4f}.kpi.naranja .kpi-valor{color:#e07a2f}.kpi.rojo .kpi-valor{color:#c1440e}.kpi.azul .kpi-valor{color:#1d4ed8}
+    .kpi-sub{font-size:10px;color:#aaa}
+    .chart-img{width:100%;max-height:190px;object-fit:contain;display:block;margin:4px 0}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    th{background:#2d6a4f;color:#fff;padding:6px 10px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+    td{padding:7px 10px;border-bottom:1px solid #f0f0f0;vertical-align:middle}
+    tr:nth-child(even) td{background:#fafafa}
+    .dos-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .tienda-box{background:#f7f7f5;border-radius:8px;padding:12px 14px}
+    .tienda-nombre{font-weight:700;font-size:12px;margin-bottom:5px}
+    .tienda-val{font-size:18px;font-weight:800}
+    .tienda-sub{font-size:10px;color:#aaa;margin-top:3px}
+    .bar-wrap{height:7px;background:#eee;border-radius:4px;overflow:hidden;margin-top:4px}
+    .bar-fill{height:100%;border-radius:4px}
+    .pie-leyenda{display:flex;gap:16px;flex-wrap:wrap;margin-top:8px}
+    .pie-item{display:flex;align-items:center;gap:6px;font-size:11px}
+    .pie-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+    .pie-ranking{display:flex;flex-direction:column;gap:6px}
+    .rank-row{display:flex;align-items:center;gap:10px;padding:7px 10px;background:#f7f7f5;border-radius:7px}
+    .rank-num{width:22px;height:22px;border-radius:50%;background:#2d6a4f;color:#fff;font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .rank-num.gris{background:#e5e7eb;color:#666}
+    .rank-nombre{flex:1;font-weight:700;font-size:12px}
+    .rank-meta{font-size:10px;color:#aaa}
+    .rank-total{font-weight:800;font-size:14px;color:#e07a2f;flex-shrink:0}
+    .footer{margin-top:28px;padding-top:10px;border-top:1px solid #eee;display:flex;justify-content:space-between;font-size:10px;color:#ccc}
+    @media print{body{padding:0}@page{margin:1.5cm}}
+  `;
+}
+
+function _pdfCabecera(titulo, subtitulo) {
+  const ahora = new Date().toLocaleDateString('es-ES', { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  return `<div class="cabecera">
+    <div class="cab-izq"><h1>Alimentación HCarmen</h1><p>${titulo}</p></div>
+    <div class="cab-der"><div>${subtitulo}</div><div>Generado: ${ahora}</div></div>
+  </div>`;
+}
+
+function _pdfFooter() {
+  return `<div class="footer"><span>Alimentación HCarmen · Informe confidencial</span><span>alimentacionhcarmen@gmail.com</span></div>`;
+}
+
+function _abrirVentanaPDF(html) {
+  const win = window.open('', '_blank');
+  if (!win) { showToast('Permite ventanas emergentes para exportar el PDF', 'error'); return; }
+  win.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Informe HCarmen</title><style>' + _pdfStyles() + '</style></head><body>' + html + '<script>window.onload=function(){window.print();}<\/script></body></html>');
+  win.document.close();
+}
+
+function generarPDFResumen() {
+  const y = mesActual.getFullYear();
+  const m = mesActual.getMonth();
+  const ventas   = getStorage('hcarmen_ventas').filter(v => enMes(v.fecha, y, m));
+  const facturas = getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m));
+  const gastos   = getStorage('hcarmen_gastos').filter(g => enMes(g.fecha, y, m));
+
+  const totalVentas  = ventas.reduce((s,v) => s + v.total, 0);
+  const totalEf      = ventas.reduce((s,v) => s + v.efectivo, 0);
+  const totalTj      = ventas.reduce((s,v) => s + v.tarjeta, 0);
+  const totalCompras = facturas.reduce((s,f) => s + f.importeTotal, 0);
+  const totalGastos  = gastos.reduce((s,g) => s + g.importe, 0);
+  const totalCostes  = totalCompras + totalGastos;
+  const beneficio    = totalVentas - totalCostes;
+  const margenPct    = totalVentas > 0 ? (beneficio / totalVentas * 100) : 0;
+  const cvPct        = totalVentas > 0 ? (totalCompras / totalVentas * 100) : 0;
+  const diasReg      = ventas.length;
+  const mediaVDia    = diasReg > 0 ? totalVentas / diasReg : 0;
+
+  const chartImg = chartResumenMesObj ? chartResumenMesObj.toBase64Image() : null;
+
+  const tiendaRows = ['tienda1','tienda2'].map((t, i) => {
+    const nom = i === 0 ? 'Tienda San Asturio' : 'Tienda Juan de Guzmán';
+    const tv = ventas.filter(v=>v.tienda===t).reduce((s,v)=>s+v.total,0);
+    const tc = facturas.filter(f=>f.tienda===t).reduce((s,f)=>s+f.importeTotal,0);
+    const tg = gastos.filter(g=>g.tienda===t).reduce((s,g)=>s+g.importe,0);
+    const tb = tv - tc - tg;
+    const pct = totalVentas > 0 ? (tv/totalVentas*100) : 0;
+    const color = tb >= 0 ? '#2d6a4f' : '#c1440e';
+    return '<div class="tienda-box"><div class="tienda-nombre">' + (i===0?'🏪 ':'🏬 ') + nom + '</div>' +
+      '<div class="tienda-val" style="color:' + color + '">' + fmtEur(tb) + '</div>' +
+      '<div class="tienda-sub">Ventas: ' + fmtEur(tv) + ' · Costes: ' + fmtEur(tc+tg) + '</div>' +
+      '<div class="bar-wrap"><div class="bar-fill" style="width:' + pct.toFixed(1) + '%;background:#2d6a4f"></div></div>' +
+    '</div>';
+  }).join('');
+
+  const html =
+    _pdfCabecera('Resumen Mensual', MESES[m] + ' ' + y) +
+    '<div class="seccion"><div class="sec-titulo">Ventas del mes</div>' +
+    '<div class="kpi-grid col4">' +
+      '<div class="kpi verde"><div class="kpi-label">Ventas totales</div><div class="kpi-valor">' + fmtEur(totalVentas) + '</div><div class="kpi-sub">' + diasReg + ' días registrados</div></div>' +
+      '<div class="kpi"><div class="kpi-label">💵 Efectivo</div><div class="kpi-valor">' + fmtEur(totalEf) + '</div><div class="kpi-sub">' + (totalVentas>0?(totalEf/totalVentas*100).toFixed(1):0) + '% ventas</div></div>' +
+      '<div class="kpi"><div class="kpi-label">💳 Tarjeta</div><div class="kpi-valor">' + fmtEur(totalTj) + '</div><div class="kpi-sub">' + (totalVentas>0?(totalTj/totalVentas*100).toFixed(1):0) + '% ventas</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Media diaria</div><div class="kpi-valor">' + fmtEur(mediaVDia) + '</div><div class="kpi-sub">por día registrado</div></div>' +
+    '</div></div>' +
+    '<div class="seccion"><div class="sec-titulo">Costes del mes</div>' +
+    '<div class="kpi-grid col3">' +
+      '<div class="kpi naranja"><div class="kpi-label">Compras proveedores</div><div class="kpi-valor">' + fmtEur(totalCompras) + '</div><div class="kpi-sub">' + facturas.length + ' facturas/albaranes</div></div>' +
+      '<div class="kpi naranja"><div class="kpi-label">Gastos fijos</div><div class="kpi-valor">' + fmtEur(totalGastos) + '</div><div class="kpi-sub">' + gastos.length + ' gastos registrados</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Total costes</div><div class="kpi-valor">' + fmtEur(totalCostes) + '</div><div class="kpi-sub">' + (totalVentas>0?(totalCostes/totalVentas*100).toFixed(1):0) + '% s/ventas</div></div>' +
+    '</div></div>' +
+    '<div class="seccion"><div class="sec-titulo">Resultado</div>' +
+    '<div class="kpi-grid col3">' +
+      '<div class="kpi ' + (beneficio>=0?'verde':'rojo') + '"><div class="kpi-label">Beneficio estimado</div><div class="kpi-valor">' + fmtEur(beneficio) + '</div><div class="kpi-sub">Ventas − costes totales</div></div>' +
+      '<div class="kpi ' + (margenPct>=20?'verde':margenPct>=8?'':'rojo') + '"><div class="kpi-label">Margen neto</div><div class="kpi-valor">' + margenPct.toFixed(1) + '%</div><div class="kpi-sub">Beneficio / ventas</div></div>' +
+      '<div class="kpi ' + (cvPct<70?'':'rojo') + '"><div class="kpi-label">Compras / Ventas</div><div class="kpi-valor">' + cvPct.toFixed(1) + '%</div><div class="kpi-sub">Objetivo &lt; 70%</div></div>' +
+    '</div></div>' +
+    '<div class="seccion"><div class="sec-titulo">Por tienda</div><div class="dos-col">' + tiendaRows + '</div></div>' +
+    (chartImg ? '<div class="seccion"><div class="sec-titulo">Ventas semanales del mes</div><img class="chart-img" src="' + chartImg + '"></div>' : '') +
+    _pdfFooter();
+
+  _abrirVentanaPDF(html);
+}
+
+function generarPDFVentas() {
+  const rango = getRangoDates();
+  if (!rango) { showToast('Selecciona un período válido', 'error'); return; }
+
+  const ventas   = filtrarPorPeriodoYTienda(getStorage('hcarmen_ventas'),   rango);
+  const facturas = filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango);
+  const gastos   = filtrarPorPeriodoYTienda(getStorage('hcarmen_gastos'),   rango);
+
+  const totalVentas  = ventas.reduce((s,v) => s + v.total, 0);
+  const totalCompras = facturas.reduce((s,f) => s + f.importeTotal, 0);
+  const totalGastos  = gastos.reduce((s,g) => s + g.importe, 0);
+  const totalCostes  = totalCompras + totalGastos;
+  const beneficio    = totalVentas - totalCostes;
+  const margenBruto  = totalVentas - totalCompras;
+  const margenPct    = totalVentas > 0 ? (margenBruto / totalVentas * 100) : 0;
+  const cvPct        = totalVentas > 0 ? (totalCompras / totalVentas * 100) : 0;
+  const diasReg      = [...new Set(ventas.map(v=>v.fecha))].length;
+  const mediaVDia    = diasReg > 0 ? totalVentas / diasReg : 0;
+  const ef           = ventas.reduce((s,v) => s + v.efectivo, 0);
+  const tj           = ventas.reduce((s,v) => s + v.tarjeta, 0);
+  const pctEf        = totalVentas > 0 ? (ef/totalVentas*100) : 0;
+  const pctTj        = totalVentas > 0 ? (tj/totalVentas*100) : 0;
+  const ventaT1      = ventas.filter(v=>v.tienda==='tienda1').reduce((s,v)=>s+v.total,0);
+  const ventaT2      = ventas.filter(v=>v.tienda==='tienda2').reduce((s,v)=>s+v.total,0);
+
+  const periodoStr = rango.desde.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}) + ' – ' + rango.hasta.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+  const tiendaStr  = statsFiltroTienda === 'todas' ? 'Ambas tiendas' : statsFiltroTienda === 'tienda1' ? 'Tienda San Asturio' : 'Tienda Juan de Guzmán';
+
+  const img1 = chartVentasObj   ? chartVentasObj.toBase64Image()   : null;
+  const img2 = chartMargenObj   ? chartMargenObj.toBase64Image()   : null;
+  const img3 = chartComparativaObj ? chartComparativaObj.toBase64Image() : null;
+
+  const html =
+    _pdfCabecera('Estadísticas de Ventas', periodoStr + ' · ' + tiendaStr) +
+    '<div class="seccion"><div class="sec-titulo">KPIs del período</div>' +
+    '<div class="kpi-grid col4">' +
+      '<div class="kpi verde"><div class="kpi-label">Ventas totales</div><div class="kpi-valor">' + fmtEur(totalVentas) + '</div><div class="kpi-sub">' + diasReg + ' días registrados</div></div>' +
+      '<div class="kpi ' + (beneficio>=0?'verde':'rojo') + '"><div class="kpi-label">Beneficio estimado</div><div class="kpi-valor">' + fmtEur(beneficio) + '</div><div class="kpi-sub">Ventas − todos los costes</div></div>' +
+      '<div class="kpi ' + (margenPct>=30?'verde':'naranja') + '"><div class="kpi-label">Margen bruto</div><div class="kpi-valor">' + margenPct.toFixed(1) + '%</div><div class="kpi-sub">' + fmtEur(margenBruto) + '</div></div>' +
+      '<div class="kpi ' + (cvPct<70?'':'rojo') + '"><div class="kpi-label">% Compras/Ventas</div><div class="kpi-valor">' + cvPct.toFixed(1) + '%</div><div class="kpi-sub">Objetivo &lt; 70%</div></div>' +
+      '<div class="kpi naranja"><div class="kpi-label">Total costes</div><div class="kpi-valor">' + fmtEur(totalCostes) + '</div><div class="kpi-sub">Compras + gastos fijos</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Venta media/día</div><div class="kpi-valor">' + fmtEur(mediaVDia) + '</div><div class="kpi-sub">Media diaria</div></div>' +
+      '<div class="kpi"><div class="kpi-label">💵 Efectivo</div><div class="kpi-valor">' + pctEf.toFixed(1) + '%</div><div class="kpi-sub">' + fmtEur(ef) + '</div></div>' +
+      '<div class="kpi"><div class="kpi-label">💳 Tarjeta</div><div class="kpi-valor">' + pctTj.toFixed(1) + '%</div><div class="kpi-sub">' + fmtEur(tj) + '</div></div>' +
+    '</div></div>' +
+    '<div class="seccion"><div class="sec-titulo">Ventas por tienda</div>' +
+    '<div class="dos-col">' +
+      '<div class="tienda-box"><div class="tienda-nombre">🏪 Tienda San Asturio</div><div class="tienda-val" style="color:#2d6a4f">' + fmtEur(ventaT1) + '</div><div class="tienda-sub">' + (totalVentas>0?(ventaT1/totalVentas*100).toFixed(1):0) + '% del total</div></div>' +
+      '<div class="tienda-box"><div class="tienda-nombre">🏬 Tienda Juan de Guzmán</div><div class="tienda-val" style="color:#1d4ed8">' + fmtEur(ventaT2) + '</div><div class="tienda-sub">' + (totalVentas>0?(ventaT2/totalVentas*100).toFixed(1):0) + '% del total</div></div>' +
+    '</div></div>' +
+    (img1 ? '<div class="seccion"><div class="sec-titulo">Evolución de ventas</div><img class="chart-img" src="' + img1 + '"></div>' : '') +
+    (img2 ? '<div class="seccion"><div class="sec-titulo">Ventas vs Costes</div><img class="chart-img" src="' + img2 + '"></div>' : '') +
+    (img3 ? '<div class="seccion"><div class="sec-titulo">Comparativa por año</div><img class="chart-img" src="' + img3 + '"></div>' : '') +
+    _pdfFooter();
+
+  _abrirVentanaPDF(html);
+}
+
+function generarPDFCompras() {
+  const rango = getRangoCompras();
+  if (!rango) { showToast('Selecciona un período válido', 'error'); return; }
+
+  function enR(f) { const d=new Date(f.fecha||''); return d>=rango.desde&&d<=rango.hasta; }
+  function deTi(x) { return comprasFiltroTienda==='todas'||x.tienda===comprasFiltroTienda; }
+
+  const facturas = getStorage('hcarmen_facturas').filter(f=>f.fecha&&enR(f)&&deTi(f));
+  const gastos   = getStorage('hcarmen_gastos').filter(g=>g.fecha&&enR(g)&&deTi(g));
+
+  const totalCompras = facturas.reduce((s,f)=>s+(f.importeTotal||0),0);
+  const totalGastos  = gastos.reduce((s,g)=>s+(g.importe||0),0);
+  const totalCostes  = totalCompras + totalGastos;
+  const nFact        = facturas.length;
+  const facMediaVal  = nFact > 0 ? totalCompras / nFact : 0;
+
+  const byProv = {};
+  facturas.forEach(f=>{
+    const k=f.proveedor||'Sin nombre';
+    if(!byProv[k]) byProv[k]={total:0,count:0};
+    byProv[k].total+=(f.importeTotal||0); byProv[k].count++;
+  });
+  const ranking = Object.entries(byProv).sort((a,b)=>b[1].total-a[1].total);
+
+  const byCat = {};
+  gastos.forEach(g=>{ const k=g.categoria||'Otros'; byCat[k]=(byCat[k]||0)+(g.importe||0); });
+  const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+
+  const periodoStr = rango.desde.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}) + ' – ' + rango.hasta.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
+  const tiendaStr  = comprasFiltroTienda==='todas'?'Ambas tiendas':comprasFiltroTienda==='tienda1'?'Tienda San Asturio':'Tienda Juan de Guzmán';
+
+  const img1 = chartComprasEvolObj ? chartComprasEvolObj.toBase64Image() : null;
+  const img2 = chartComprasProvObj ? chartComprasProvObj.toBase64Image() : null;
+
+  const rankingRows = ranking.map((x,i)=>{
+    const media = x[1].count>0 ? x[1].total/x[1].count : 0;
+    const pct   = totalCompras>0 ? (x[1].total/totalCompras*100) : 0;
+    return '<tr><td><strong>' + (i+1) + '. ' + x[0] + '</strong></td><td>' + x[1].count + ' doc.</td><td>' + fmtEur(media) + '</td><td style="font-weight:700;color:#e07a2f">' + fmtEur(x[1].total) + '</td><td>' + pct.toFixed(1) + '%</td></tr>';
+  }).join('');
+
+  const catRows = cats.map(x=>{
+    const pct = totalGastos>0?(x[1]/totalGastos*100):0;
+    return '<tr><td>' + x[0] + '</td><td style="font-weight:700;color:#e07a2f">' + fmtEur(x[1]) + '</td><td>' + pct.toFixed(1) + '%</td></tr>';
+  }).join('');
+
+  const html =
+    _pdfCabecera('Estadísticas de Compras y Gastos', periodoStr + ' · ' + tiendaStr) +
+    '<div class="seccion"><div class="sec-titulo">KPIs del período</div>' +
+    '<div class="kpi-grid col4">' +
+      '<div class="kpi naranja"><div class="kpi-label">Total compras</div><div class="kpi-valor">' + fmtEur(totalCompras) + '</div><div class="kpi-sub">' + nFact + ' facturas/albaranes</div></div>' +
+      '<div class="kpi naranja"><div class="kpi-label">Total gastos fijos</div><div class="kpi-valor">' + fmtEur(totalGastos) + '</div><div class="kpi-sub">' + gastos.length + ' gastos registrados</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Coste total</div><div class="kpi-valor">' + fmtEur(totalCostes) + '</div><div class="kpi-sub">Compras + gastos</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Factura media</div><div class="kpi-valor">' + (nFact?fmtEur(facMediaVal):'—') + '</div><div class="kpi-sub">por documento</div></div>' +
+      '<div class="kpi"><div class="kpi-label">Proveedores activos</div><div class="kpi-valor">' + ranking.length + '</div><div class="kpi-sub">con compras en período</div></div>' +
+      '<div class="kpi ' + (totalCostes>0&&totalGastos/totalCostes>0.3?'rojo':'') + '"><div class="kpi-label">% Gastos s/coste</div><div class="kpi-valor">' + (totalCostes>0?(totalGastos/totalCostes*100).toFixed(1):0) + '%</div><div class="kpi-sub">sobre coste total</div></div>' +
+      (ranking.length ? '<div class="kpi verde"><div class="kpi-label">Proveedor principal</div><div class="kpi-valor" style="font-size:13px">' + (ranking[0][0].length>18?ranking[0][0].slice(0,16)+'…':ranking[0][0]) + '</div><div class="kpi-sub">' + fmtEur(ranking[0][1].total) + '</div></div>' : '') +
+    '</div></div>' +
+    (img1 ? '<div class="seccion"><div class="sec-titulo">Evolución de compras</div><img class="chart-img" src="' + img1 + '"></div>' : '') +
+    (img2 ? '<div class="seccion"><div class="sec-titulo">Top proveedores</div><img class="chart-img" src="' + img2 + '"></div>' : '') +
+    (rankingRows ? '<div class="seccion"><div class="sec-titulo">Ranking detallado de proveedores</div><table><thead><tr><th>Proveedor</th><th>Docs.</th><th>Media</th><th>Total</th><th>% s/compras</th></tr></thead><tbody>' + rankingRows + '</tbody></table></div>' : '') +
+    (catRows ? '<div class="seccion"><div class="sec-titulo">Gastos por categoría</div><table><thead><tr><th>Categoría</th><th>Importe</th><th>% s/gastos fijos</th></tr></thead><tbody>' + catRows + '</tbody></table></div>' : '') +
+    _pdfFooter();
+
+  _abrirVentanaPDF(html);
 }
 
 
