@@ -996,25 +996,6 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- MODAL CAMBIAR PIN -->
-<div class="modal-overlay" id="modalCambiarPin" style="display:none">
-  <div class="modal-box">
-    <div class="modal-title">Cambiar PIN</div>
-    <div style="font-size:14px;color:var(--gris);margin-bottom:16px" id="cambiarPinNombre"></div>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">Nuevo PIN (4 dígitos)</div>
-      <input type="number" class="field-input" id="nuevoPinInput" placeholder="1234" maxlength="4">
-    </div>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">Confirmar PIN</div>
-      <input type="number" class="field-input" id="confirmarPinInput" placeholder="1234" maxlength="4">
-    </div>
-    <div class="modal-btns">
-      <button class="btn-cancelar" onclick="cerrarCambiarPin()">Cancelar</button>
-      <button class="btn-submit" style="flex:1" onclick="guardarNuevoPin()">Guardar PIN</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════════════
      PANTALLA: HOME
@@ -1078,9 +1059,8 @@
     <div class="admin-section">
       <div class="section-label">Usuarios</div>
       <div class="admin-card">
-        <div class="admin-card-title">Usuarios registrados</div>
-        <div id="adminUsuariosList"></div>
-        <button class="btn-submit" style="margin-top:12px" onclick="mostrarModalNuevoUsuario()">+ Nuevo usuario</button>
+        <div class="admin-card-title">Usuarios del sistema</div>
+        <p style="font-size:13px;color:var(--gris);line-height:1.6">👥 Los usuarios se gestionan directamente en el código fuente. Contacta con el administrador para añadir o modificar usuarios.</p>
       </div>
     </div>
 
@@ -1122,42 +1102,6 @@
   </div>
 </div>
 
-<!-- MODAL NUEVO USUARIO -->
-<div class="modal-overlay" id="modalNuevoUsuario" style="display:none">
-  <div class="modal-box">
-    <div class="modal-title">Nuevo usuario</div>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">Nombre</div>
-      <input type="text" class="field-input" id="nuNombre" placeholder="Nombre del usuario">
-    </div>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">PIN (4 dígitos)</div>
-      <input type="number" class="field-input" id="nuPin" placeholder="1234" maxlength="4">
-    </div>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">Rol</div>
-      <select class="field-select" id="nuRol">
-        <option value="user">Usuario</option>
-        <option value="admin">Administrador</option>
-      </select>
-    </div>
-    <div class="field-group" style="margin-bottom:12px">
-      <div class="field-label">Color avatar</div>
-      <select class="field-select" id="nuColor">
-        <option value="#2d6a4f">Verde</option>
-        <option value="#e07a2f">Naranja</option>
-        <option value="#c1440e">Rojo</option>
-        <option value="#1d4ed8">Azul</option>
-        <option value="#7c3aed">Morado</option>
-        <option value="#b45309">Marrón</option>
-      </select>
-    </div>
-    <div class="modal-btns">
-      <button class="btn-cancelar" onclick="cerrarModalUsuario()">Cancelar</button>
-      <button class="btn-submit" style="flex:1" onclick="crearUsuario()">Crear</button>
-    </div>
-  </div>
-</div>
 
 <div class="screen active" id="screen-home">
   <div style="background:var(--verde);padding:12px 20px;display:flex;align-items:center;justify-content:space-between">
@@ -1958,19 +1902,30 @@ let screenStack = ['screen-home'];
 function navTo(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if (screenStack[screenStack.length-1] !== id) screenStack.push(id);
+  if (screenStack[screenStack.length-1] !== id) {
+    screenStack.push(id);
+    history.pushState({ screen: id }, '', '#' + id);
+  }
   window.scrollTo(0,0);
   onScreenEnter(id);
 }
 
 function navBack() {
   stopCamera();
+  if (screenStack.length > 1) {
+    history.back();
+  }
+}
+
+window.addEventListener('popstate', function(e) {
+  stopCamera();
   screenStack.pop();
   const prev = screenStack[screenStack.length-1] || 'screen-home';
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(prev).classList.add('active');
   window.scrollTo(0,0);
-}
+  onScreenEnter(prev);
+});
 
 function onScreenEnter(id) {
   if (id === 'screen-historial') renderHistorial('todo');
@@ -2443,6 +2398,7 @@ async function guardarFactura() {
     importeTotal: importe,
     tienda: tiendaFact,
     notas: document.getElementById('factNotas').value.trim(),
+    usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
     synced: false
   };
 
@@ -2470,7 +2426,7 @@ async function guardarFactura() {
       syncData('addFactura', {factura: {
         fecha: factura.fecha, proveedor: factura.proveedor,
         tienda: nombreTienda(factura.tienda), importe: factura.importeTotal,
-        tipo: factura.tipo, notas: factura.notas, syncId: factura.syncId
+        tipo: factura.tipo, notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId
       }}).then(ok => {
         if (ok) setStorage('hcarmen_facturas',
           getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
@@ -2492,6 +2448,7 @@ async function guardarFactura() {
     importe: factura.importeTotal,
     tipo: factura.tipo,
     notas: factura.notas,
+    usuario: factura.usuario,
     syncId: factura.syncId
   }});
   if (ok) {
@@ -2527,6 +2484,7 @@ async function guardarVenta() {
     fondo: fondo,
     tickets: tickets,
     notas: document.getElementById('ventaNotas').value.trim(),
+    usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
     synced: false
   };
 
@@ -2542,6 +2500,7 @@ async function guardarVenta() {
     tarjeta: venta.tarjeta,
     total: venta.total,
     notas: venta.notas,
+    usuario: venta.usuario,
     syncId: venta.syncId
   }});
   if (ok) {
@@ -2573,6 +2532,7 @@ async function guardarGasto() {
     importe,
     categoria: document.getElementById('gastoCat').value,
     notas: document.getElementById('gastoNotas').value.trim(),
+    usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
     synced: false
   };
 
@@ -2588,6 +2548,7 @@ async function guardarGasto() {
     importe: gasto.importe,
     categoria: gasto.categoria,
     notas: gasto.notas,
+    usuario: gasto.usuario,
     syncId: gasto.syncId
   }});
   if (ok) {
@@ -2784,6 +2745,7 @@ function renderHistorial(filtro) {
           <span>${formatFecha(item.fecha)}</span>
           <span class="item-tienda-tag">${tiendaTag}</span>
         </div>
+        ${item.usuario ? `<div style="color:var(--gris);font-size:11px">👤 ${item.usuario}</div>` : ''}
         <div class="item-synced">${syncIcon} ${item.synced ? 'Sincronizado' : 'Pendiente'}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
@@ -3089,12 +3051,14 @@ function showToast(msg, tipo) {
 // SISTEMA DE USUARIOS Y AUTENTICACIÓN
 // ══════════════════════════════════════════════════════
 
-// Usuarios por defecto (se guardan en localStorage y se sincronizan con Sheet)
-const USUARIOS_DEFAULT = [
+const USUARIOS = [
   { id: 'usr_admin', nombre: 'Arturo', rol: 'admin', pin: '1982', color: '#2d6a4f', activo: true },
   { id: 'usr_arturo', nombre: 'Arturo U', rol: 'user', pin: '1234', color: '#1d4ed8', activo: true },
-  { id: 'usr_padre', nombre: 'Padre', rol: 'user', pin: '0000', color: '#e07a2f', activo: true }
+  { id: 'usr_sonia', nombre: 'Sonia', rol: 'user', pin: '0000', color: '#e07a2f', activo: true },
+  { id: 'usr_alvaro', nombre: 'Alvaro', rol: 'user', pin: '0000', color: '#7c3aed', activo: true }
 ];
+// ⚠️ PARA AÑADIR O MODIFICAR USUARIOS: editar esta lista directamente en el código.
+// Los cambios se despliegan automáticamente en GitHub Pages al hacer push.
 
 let usuarioActual = null;
 let pinBuffer = '';
@@ -3103,12 +3067,7 @@ let sessionTimer = null;
 const SESSION_DURATION = 60 * 60 * 1000; // 1 hora
 
 function getUsuarios() {
-  try {
-    const stored = JSON.parse(localStorage.getItem('hcarmen_usuarios'));
-    if (stored && stored.length > 0) return stored;
-  } catch(e) {}
-  setStorage('hcarmen_usuarios', USUARIOS_DEFAULT);
-  return USUARIOS_DEFAULT;
+  return USUARIOS;
 }
 
 function iniciales(nombre) {
@@ -3280,7 +3239,6 @@ function cargarAdmin() {
     navBack();
     return;
   }
-  renderAdminUsuarios();
   renderAdminLog();
   cargarUsoApi();
 }
@@ -3307,30 +3265,6 @@ async function cargarUsoApi() {
   } catch(e) {}
 }
 
-function renderAdminUsuarios() {
-  const usuarios = getUsuarios();
-  const lista = document.getElementById('adminUsuariosList');
-  lista.innerHTML = usuarios.map(u => `
-    <div class="usuario-row-admin">
-      <div class="pin-avatar-small" style="background:${u.color};width:40px;height:40px;border-radius:12px;flex-shrink:0">${iniciales(u.nombre)}</div>
-      <div class="usuario-row-info">
-        <div class="usuario-row-nombre">${u.nombre}</div>
-        <div class="usuario-row-meta">PIN: ${'•'.repeat(4)} · ${u.rol === 'admin' ? '<span class="tag-rol admin">Admin</span>' : '<span class="tag-rol user">Usuario</span>'} ${!u.activo ? '<span class="tag-inactivo">Inactivo</span>' : ''}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button onclick="toggleUsuario('${u.id}')" style="background:${u.activo ? '#fee2e2' : '#d8f3dc'};border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;color:${u.activo ? '#c1440e' : '#2d6a4f'};font-family:'Lato',sans-serif">
-          ${u.activo ? 'Desactivar' : 'Activar'}
-        </button>
-        <button onclick="mostrarCambiarPin('${u.id}')" style="background:#e0f2fe;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#0369a1;font-family:'Lato',sans-serif">
-          Cambiar PIN
-        </button>
-        <button onclick="borrarUsuario('${u.id}')" style="background:#f3f4f6;border:none;border-radius:8px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;color:var(--gris);font-family:'Lato',sans-serif">
-          🗑 Borrar
-        </button>
-      </div>
-    </div>
-  `).join('');
-}
 
 function renderAdminLog() {
   const logs = getStorage('hcarmen_log').slice(0, 100);
@@ -3346,48 +3280,6 @@ function renderAdminLog() {
   }).join('');
 }
 
-function toggleUsuario(userId) {
-  const usuarios = getUsuarios();
-  const idx = usuarios.findIndex(u => u.id === userId);
-  if (idx === -1) return;
-  if (usuarios[idx].id === usuarioActual.id) { showToast('No puedes desactivarte a ti mismo', 'error'); return; }
-  usuarios[idx].activo = !usuarios[idx].activo;
-  setStorage('hcarmen_usuarios', usuarios);
-  registrarLog('USUARIO', (usuarios[idx].activo ? 'Activado: ' : 'Desactivado: ') + usuarios[idx].nombre);
-  renderAdminUsuarios();
-  showToast('Usuario actualizado', 'ok');
-}
-
-function mostrarModalNuevoUsuario() {
-  document.getElementById('nuNombre').value = '';
-  document.getElementById('nuPin').value = '';
-  document.getElementById('modalNuevoUsuario').style.display = 'flex';
-}
-
-function cerrarModalUsuario() {
-  document.getElementById('modalNuevoUsuario').style.display = 'none';
-}
-
-function crearUsuario() {
-  const nombre = document.getElementById('nuNombre').value.trim();
-  const pin = String(document.getElementById('nuPin').value).trim();
-  const rol = document.getElementById('nuRol').value;
-  const color = document.getElementById('nuColor').value;
-  
-  if (!nombre) { showToast('Introduce un nombre', 'error'); return; }
-  if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { showToast('El PIN debe tener 4 dígitos', 'error'); return; }
-  
-  const nuevos = getUsuarios();
-  nuevos.push({
-    id: 'usr_' + getId(),
-    nombre, rol, pin, color, activo: true
-  });
-  setStorage('hcarmen_usuarios', nuevos);
-  registrarLog('USUARIO', 'Nuevo usuario creado: ' + nombre);
-  cerrarModalUsuario();
-  renderAdminUsuarios();
-  showToast('Usuario ' + nombre + ' creado', 'ok');
-}
 
 async function testApiClaude() {
   document.getElementById('adminApiStatus').innerHTML = '⏳ Verificando...';
@@ -3432,57 +3324,6 @@ function abrirPin(userId) {
   setTimeout(() => overlay.focus(), 100);
 }
 
-// ── BORRAR USUARIO ──
-function borrarUsuario(userId) {
-  const usuarios = getUsuarios();
-  const u = usuarios.find(x => x.id === userId);
-  if (!u) return;
-  if (u.id === usuarioActual.id) { showToast('No puedes borrarte a ti mismo', 'error'); return; }
-  if (!confirm('¿Seguro que quieres borrar el usuario "' + u.nombre + '"? Esta acción no se puede deshacer.')) return;
-  const nuevos = usuarios.filter(x => x.id !== userId);
-  setStorage('hcarmen_usuarios', nuevos);
-  registrarLog('USUARIO', 'Usuario borrado: ' + u.nombre);
-  renderAdminUsuarios();
-  showToast('Usuario ' + u.nombre + ' eliminado', 'ok');
-}
-
-// ── CAMBIAR PIN ──
-let cambiarPinUserId = null;
-
-function mostrarCambiarPin(userId) {
-  const u = getUsuarios().find(x => x.id === userId);
-  if (!u) return;
-  cambiarPinUserId = userId;
-  document.getElementById('cambiarPinNombre').textContent = 'Usuario: ' + u.nombre;
-  document.getElementById('nuevoPinInput').value = '';
-  document.getElementById('confirmarPinInput').value = '';
-  document.getElementById('modalCambiarPin').style.display = 'flex';
-}
-
-function cerrarCambiarPin() {
-  document.getElementById('modalCambiarPin').style.display = 'none';
-  cambiarPinUserId = null;
-}
-
-function guardarNuevoPin() {
-  const nuevoPin = String(document.getElementById('nuevoPinInput').value).trim();
-  const confirmarPin = String(document.getElementById('confirmarPinInput').value).trim();
-  if (nuevoPin.length !== 4 || !/^[0-9]{4}$/.test(nuevoPin)) {
-    showToast('El PIN debe tener exactamente 4 dígitos', 'error'); return;
-  }
-  if (nuevoPin !== confirmarPin) {
-    showToast('Los PINs no coinciden', 'error'); return;
-  }
-  const usuarios = getUsuarios();
-  const idx = usuarios.findIndex(u => u.id === cambiarPinUserId);
-  if (idx === -1) return;
-  const nombreU = usuarios[idx].nombre;
-  usuarios[idx].pin = nuevoPin;
-  setStorage('hcarmen_usuarios', usuarios);
-  registrarLog('USUARIO', 'PIN cambiado para: ' + nombreU);
-  cerrarCambiarPin();
-  showToast('PIN de ' + nombreU + ' actualizado', 'ok');
-}
 
 
 // ══════════════════════════════════════════════════════

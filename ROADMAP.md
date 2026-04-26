@@ -37,6 +37,11 @@
 - [x] `deleteProveedor` para borrar filas del Sheet tab `Proveedores`
 - [x] `getProveedores` devuelve `{ proveedores: [...] }` — el frontend maneja ambos formatos
 
+### UX y navegación
+- [x] Botón atrás del navegador/móvil funciona correctamente (History API — `pushState` + `popstate`)
+- [x] Usuarios hardcodeados en el código — eliminada gestión dinámica desde Admin (lista `USUARIOS` en index.html)
+- [x] Campo `usuario` registrado en facturas, ventas y gastos — visible en el historial
+
 ### Bugs resueltos
 - [x] `guardarFactura` petaba en silencio — `proveedorSeleccionado` no declarada y 9 funciones de proveedor faltaban
 - [x] Al editar proveedor se creaba fila nueva en lugar de actualizar — faltaba pasar `isEdit: true`
