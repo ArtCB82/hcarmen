@@ -1423,6 +1423,8 @@
           <option value="Personal">👤 Personal / Nóminas</option>
           <option value="Material">📦 Material / Bolsas</option>
           <option value="Reparaciones">🔧 Reparaciones</option>
+          <option value="Impuestos">🏛️ Impuestos</option>
+          <option value="Gestoría">📑 Gestoría</option>
           <option value="Otros">📋 Otros</option>
         </select>
       </div>
@@ -1736,6 +1738,19 @@
     <div class="modal-btns" style="margin-top:16px">
       <button class="btn-cancelar" onclick="cerrarModalProveedor()">Cancelar</button>
       <button class="btn-submit" style="flex:1" onclick="guardarProveedor()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COTEJO PROVEEDOR OCR -->
+<div class="modal-overlay" id="modalCotejoProveedor" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">Verificar proveedor</div>
+    <div style="font-size:13px;color:var(--gris);margin-bottom:4px">OCR detectó:</div>
+    <div style="font-size:15px;font-weight:700;color:var(--texto);background:var(--gris-claro);border-radius:8px;padding:8px 12px;margin-bottom:14px" id="cotejoOcrTexto"></div>
+    <div id="cotejoCandidatos"></div>
+    <div class="modal-btns" style="margin-top:4px">
+      <button class="btn-cancelar" style="flex:1" onclick="cerrarModalCotejo(true)">Crear proveedor nuevo</button>
     </div>
   </div>
 </div>
@@ -2196,6 +2211,97 @@ async function comprimirImagen(src, maxPx) {
   });
 }
 
+// ── SIMILITUD DE PROVEEDORES (para cotejo OCR) ──
+
+function _normProv(s) {
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/\b(s\.?l\.?u?\.?|s\.?a\.?u?\.?|s\.?c\.?|c\.?b\.?|s\.?l\.?l\.?)\b/g, '')
+    .replace(/[.,;:\/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = [];
+  for (let i = 0; i <= m; i++) { dp[i] = [i]; }
+  for (let j = 0; j <= n; j++) { dp[0][j] = j; }
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1]
+                 : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function _similitudProv(a, b) {
+  const na = _normProv(a), nb = _normProv(b);
+  if (!na || !nb) return 0;
+  if (na === nb) return 1.0;
+  if (na.includes(nb) || nb.includes(na)) return 0.92;
+  const maxLen = Math.max(na.length, nb.length);
+  return Math.max(0, 1 - _levenshtein(na, nb) / maxLen);
+}
+
+function _candidatosProveedor(texto, provs) {
+  return provs
+    .map(p => ({ p, score: _similitudProv(texto, p.razonSocial) }))
+    .filter(x => x.score >= 0.45)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+}
+
+// ── COTEJO MODAL ──
+
+let _cotejoTextoOCR = '';
+
+function mostrarModalCotejo(textoOCR, candidatos) {
+  _cotejoTextoOCR = textoOCR;
+  document.getElementById('cotejoOcrTexto').textContent = textoOCR;
+
+  const div = document.getElementById('cotejoCandidatos');
+  if (candidatos.length === 0) {
+    div.innerHTML = '<p style="font-size:13px;color:var(--gris);margin-bottom:12px">No se encontraron coincidencias en tu base de datos de proveedores.</p>';
+  } else {
+    div.innerHTML = '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--gris);margin-bottom:8px">¿Es alguno de estos?</div>' +
+      candidatos.map(({p, score}) => {
+        const pct = Math.round(score * 100);
+        const color = score >= 0.85 ? 'var(--verde)' : score >= 0.65 ? 'var(--naranja)' : 'var(--gris)';
+        return `<button onclick="seleccionarDesdeModalCotejo('${p.id}')" style="width:100%;text-align:left;background:var(--gris-claro);border:2px solid transparent;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:'Lato',sans-serif;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--verde)'" onmouseout="this.style.borderColor='transparent'">
+          <div style="font-weight:700;font-size:14px;color:var(--texto)">${p.razonSocial}</div>
+          <div style="font-size:11px;color:${color};margin-top:2px">Similitud: ${pct}%${score >= 0.85 ? ' · Alta confianza' : score >= 0.65 ? ' · Probable' : ' · Posible'}</div>
+        </button>`;
+      }).join('');
+  }
+
+  document.getElementById('modalCotejoProveedor').style.display = 'flex';
+}
+
+function seleccionarDesdeModalCotejo(provId) {
+  document.getElementById('modalCotejoProveedor').style.display = 'none';
+  const p = getProveedores().find(x => x.id === provId);
+  if (!p) return;
+  seleccionarProveedor(p.id);
+  document.getElementById('ocrProveedor').textContent = '✓ ' + p.razonSocial;
+  showToast('✓ Proveedor seleccionado: ' + p.razonSocial, 'ok');
+}
+
+function cerrarModalCotejo(usarComoNuevo) {
+  document.getElementById('modalCotejoProveedor').style.display = 'none';
+  if (usarComoNuevo) {
+    proveedorSeleccionado = null;
+    document.getElementById('ocrProveedor').textContent = _cotejoTextoOCR + ' (nuevo)';
+    document.getElementById('factProveedor').value = _cotejoTextoOCR;
+    document.getElementById('autocompleteBox').style.display = 'none';
+    showToast('Escribe el nombre definitivo o guarda para añadirlo a la BD', '');
+  }
+}
+
+// ── RELLENAR DATOS OCR ──
+
 function rellenarDatosOCR(datos) {
   document.getElementById('ocrTipo').textContent = datos.tipo || '—';
   document.getElementById('ocrImporte').textContent = datos.importe ? datos.importe + ' €' : '—';
@@ -2203,30 +2309,30 @@ function rellenarDatosOCR(datos) {
   if (datos.tipo)      document.getElementById('factTipo').value = datos.tipo;
   if (datos.fecha)     document.getElementById('factFecha').value = datos.fecha;
 
-  // Buscar si el proveedor detectado existe en la BD
   if (datos.proveedor) {
-    const provs = getProveedores();
-    const texto_lower = datos.proveedor.toLowerCase();
-    const match = provs.find(p => {
-      const nombre_lower = p.razonSocial.toLowerCase();
-      // Match exacto o si uno contiene al otro (ej: "HORGRUPAN" en "HORGRUPAN S.L.")
-      return nombre_lower === texto_lower ||
-             nombre_lower.includes(texto_lower) ||
-             texto_lower.includes(nombre_lower);
-    });
+    const candidatos = _candidatosProveedor(datos.proveedor, getProveedores());
 
-    if (match) {
-      // Proveedor encontrado — seleccionarlo automáticamente
-      document.getElementById('ocrProveedor').textContent = '✓ ' + match.razonSocial;
-      seleccionarProveedor(match.id);
-      showToast('✨ Datos detectados · Proveedor reconocido', 'ok');
+    if (candidatos.length > 0 && candidatos[0].score >= 0.90) {
+      // Alta confianza: selección automática
+      seleccionarProveedor(candidatos[0].p.id);
+      document.getElementById('ocrProveedor').textContent = '✓ ' + candidatos[0].p.razonSocial;
+      showToast('✨ Datos detectados · Proveedor reconocido automáticamente', 'ok');
+    } else if (candidatos.length > 0) {
+      // Candidatos con similitud moderada: pedir confirmación
+      document.getElementById('ocrProveedor').textContent = '⚠️ ' + datos.proveedor + ' — verifica';
+      showToast('✨ Datos detectados · Verifica el proveedor', 'ok');
+      setTimeout(() => mostrarModalCotejo(datos.proveedor, candidatos), 400);
     } else {
-      // Proveedor no encontrado — mostrar nombre y sugerir crear
+      // Sin coincidencias: proveedor nuevo
+      proveedorSeleccionado = null;
       document.getElementById('ocrProveedor').textContent = datos.proveedor + ' (nuevo)';
       document.getElementById('factProveedor').value = datos.proveedor;
       document.getElementById('autocompleteBox').style.display = 'none';
-      showToast('✨ Detectado · Proveedor nuevo, añádelo a la BD al guardar', 'ok');
+      showToast('✨ Detectado · Proveedor nuevo, se añadirá al guardar', 'ok');
     }
+  } else {
+    document.getElementById('ocrProveedor').textContent = 'No detectado';
+    showToast('✨ Datos detectados · Revisa el proveedor', 'ok');
   }
 }
 
