@@ -36,10 +36,31 @@
 
 ## Usuarios
 
-| Usuario | PIN | Rol |
-|---|---|---|
-| Arturo Admin | 1982 | admin |
-| Arturo U | 1234 | user |
-| Padre | 0000 | user |
+| id | Nombre | PIN | Rol |
+|---|---|---|---|
+| usr_admin | Arturo | 1982 | admin |
+| usr_arturo | Arturo H | 1234 | user |
+| usr_arturop | Arturo P | 2081 | user |
+| usr_carmen | Carmen | 2081 | user |
+| usr_alvaro | Alvaro | 0000 | user |
+| usr_sonia | Sonia | 0000 | user |
 
 Los PINs se validan en el frontend. El rol `admin` da acceso al panel de administración (usuarios, log de API, log de operaciones).
+
+Para añadir o modificar usuarios: editar la constante `USUARIOS` en `index.html` directamente. Los cambios se despliegan solos vía GitHub Pages.
+
+## Categorías de gastos
+
+Predefinidas en el `<select id="gastoCat">` de la pantalla de gasto manual:
+
+| Valor | Etiqueta |
+|---|---|
+| Alquiler | 🏠 Alquiler |
+| Transporte/Gasolina | 🚗 Transporte/Gasolina |
+| Suministros | 💡 Suministros (luz, agua...) |
+| Personal | 👤 Personal / Nóminas |
+| Material | 📦 Material / Bolsas |
+| Reparaciones | 🔧 Reparaciones |
+| Impuestos | 🏛️ Impuestos |
+| Gestoría | 📑 Gestoría |
+| Otros | 📋 Otros |

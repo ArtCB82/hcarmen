@@ -6,6 +6,7 @@
 <title>Alimentación HCarmen</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 
   :root {
@@ -1207,10 +1208,11 @@
     </div>
 
     <div class="camera-controls">
-      <button class="btn-cam" id="btnGaleria" onclick="abrirGaleria()">🖼 Galería</button>
+      <button class="btn-cam" id="btnGaleria" onclick="abrirGaleria()">🖼 Galería / PDF</button>
       <button class="btn-cam primary" id="btnCamara" onclick="toggleCamara()">📷 Abrir Cámara</button>
     </div>
-    <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="cargarImagen(event)">
+    <input type="file" id="fileInput" accept="image/*,.pdf" multiple style="display:none" onchange="cargarImagen(event)">
+    <div id="multiImageThumbs" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 8px;"></div>
 
     <div id="ocrResultDiv" style="display:none">
       <div class="ocr-result">
@@ -1218,6 +1220,7 @@
         <div class="ocr-field"><span>Tipo</span><span id="ocrTipo">—</span></div>
         <div class="ocr-field"><span>Proveedor</span><span id="ocrProveedor">—</span></div>
         <div class="ocr-field"><span>Importe</span><span id="ocrImporte">—</span></div>
+        <div class="ocr-field"><span>N° Factura</span><span id="ocrNumeroFactura">—</span></div>
       </div>
     </div>
 
@@ -1254,6 +1257,11 @@
           <option value="factura">Factura</option>
           <option value="ticket">Ticket</option>
         </select>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">N° Factura / Albarán <span style="font-weight:400;color:var(--gris)">(opcional)</span></div>
+        <input type="text" class="field-input" id="factNumeroFactura" placeholder="Ej: F2024-001">
       </div>
 
       <div class="field-group">
@@ -1893,6 +1901,21 @@
 </div>
 
 <!-- ══════════════════════════════════════
+     MODAL DETALLE PROVEEDOR
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalDetalleProveedor" style="display:none" onclick="if(event.target===this)cerrarDetalleProveedor()">
+  <div class="modal-card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
+    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3 id="detalleProvNombre" style="margin:0;font-size:18px;color:var(--verde)"></h3>
+      <button onclick="cerrarDetalleProveedor()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris);line-height:1">×</button>
+    </div>
+    <div id="detalleProvDatos" style="margin-bottom:16px"></div>
+    <div class="section-label" style="margin-bottom:8px">Documentos registrados</div>
+    <div id="detalleProvFacturas"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════ -->
 
@@ -1907,6 +1930,7 @@ let tiendaVenta = null;
 let tiendaGasto = null;
 let cameraStream = null;
 let fotoBase64 = null;
+let _paginasBase64 = [];
 let mesActual = new Date();
 let mesActualProv = new Date();
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -2092,15 +2116,113 @@ function stopCamera() {
 
 function abrirGaleria() { document.getElementById('fileInput').click(); }
 
-function cargarImagen(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    fotoBase64 = ev.target.result;
+async function cargarImagen(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+
+  // Comprobar si hay algún PDF entre los archivos
+  const hayPDF = files.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+
+  if (hayPDF && files.length === 1) {
+    // PDF único: convertir páginas a imágenes con pdf.js y fusionar
+    await procesarPDF(files[0]);
+    return;
+  }
+
+  // Imágenes (una o múltiples páginas)
+  const srcs = await Promise.all(files.map(f => new Promise((res, rej) => {
+    if (!f.type.startsWith('image/')) { showToast('Solo imágenes o PDF', 'error'); rej(); return; }
+    const reader = new FileReader();
+    reader.onload = ev => res(ev.target.result);
+    reader.onerror = rej;
+    reader.readAsDataURL(f);
+  })));
+
+  _paginasBase64 = srcs;
+  mostrarMiniaturas(srcs);
+
+  if (srcs.length === 1) {
+    fotoBase64 = srcs[0];
     mostrarFoto(fotoBase64);
-  };
-  reader.readAsDataURL(file);
+  } else {
+    // Múltiples páginas: fusionar verticalmente en un solo canvas
+    showToast(`${srcs.length} páginas seleccionadas. Fusionando...`, '');
+    fotoBase64 = await fusionarImagenes(srcs);
+    mostrarFoto(fotoBase64);
+  }
+}
+
+function mostrarMiniaturas(srcs) {
+  const container = document.getElementById('multiImageThumbs');
+  if (!container) return;
+  container.innerHTML = srcs.map((src, i) =>
+    `<div style="position:relative">
+      <img src="${src}" style="width:54px;height:72px;object-fit:cover;border-radius:6px;border:2px solid var(--verde)">
+      <div style="position:absolute;bottom:2px;right:4px;font-size:9px;font-weight:700;color:white;text-shadow:0 1px 2px rgba(0,0,0,0.8)">${i+1}</div>
+    </div>`
+  ).join('');
+}
+
+async function fusionarImagenes(srcs) {
+  return new Promise(resolve => {
+    const imgs = [];
+    let loaded = 0;
+    srcs.forEach((src, i) => {
+      const img = new Image();
+      img.onload = () => {
+        imgs[i] = img;
+        if (++loaded === srcs.length) {
+          const maxW = Math.max(...imgs.map(im => im.width));
+          const totalH = imgs.reduce((s, im) => s + Math.round(im.height * maxW / im.width), 0);
+          const canvas = document.createElement('canvas');
+          canvas.width = maxW;
+          canvas.height = totalH;
+          const ctx = canvas.getContext('2d');
+          let y = 0;
+          imgs.forEach(im => {
+            const h = Math.round(im.height * maxW / im.width);
+            ctx.drawImage(im, 0, y, maxW, h);
+            y += h;
+          });
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
+        }
+      };
+      img.src = src;
+    });
+  });
+}
+
+async function procesarPDF(file) {
+  if (typeof pdfjsLib === 'undefined') {
+    showToast('Librería PDF no disponible. Usa imagen.', 'error');
+    return;
+  }
+  showToast('Procesando PDF...', '');
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const numPages = Math.min(pdf.numPages, 4); // máx 4 páginas
+    const srcs = [];
+    for (let p = 1; p <= numPages; p++) {
+      const page = await pdf.getPage(p);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+      srcs.push(canvas.toDataURL('image/jpeg', 0.88));
+    }
+    _paginasBase64 = srcs;
+    mostrarMiniaturas(srcs);
+    fotoBase64 = srcs.length === 1 ? srcs[0] : await fusionarImagenes(srcs);
+    mostrarFoto(fotoBase64);
+    if (pdf.numPages > 4) showToast(`PDF con ${pdf.numPages} páginas — analizando las primeras 4`, '');
+  } catch (err) {
+    console.error('[PDF]', err);
+    showToast('Error al leer el PDF. Prueba con imagen.', 'error');
+  }
 }
 
 async function mostrarFoto(src) {
@@ -2117,7 +2239,7 @@ async function mostrarFoto(src) {
   document.getElementById('ocrImporte').textContent = '⏳';
 
   try {
-    const compressed = await comprimirImagen(src, 600);
+    const compressed = await comprimirImagen(src, 1600);
     console.log('[OCR] Imagen comprimida, tamaño aprox:', Math.round(compressed.length/1024) + 'KB');
 
     const tempId = Date.now().toString(36);
@@ -2165,9 +2287,9 @@ async function mostrarFoto(src) {
     }
 
     if (enviado) {
-      // Polling: intentar leer el resultado hasta 5 veces cada 2 segundos
-      for (let i = 0; i < 5; i++) {
-        await new Promise(r => setTimeout(r, 2000));
+      // Polling: intentar leer el resultado hasta 10 veces cada 3 segundos
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 3000));
         console.log('[OCR] Polling intento', i+1);
         try {
           const res = await fetch(APPS_SCRIPT_URL + '?action=getOcrResult&tempId=' + tempId, {
@@ -2205,7 +2327,7 @@ async function comprimirImagen(src, maxPx) {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.75));
+      resolve(canvas.toDataURL('image/jpeg', 0.88));
     };
     img.src = src;
   });
@@ -2305,9 +2427,12 @@ function cerrarModalCotejo(usarComoNuevo) {
 function rellenarDatosOCR(datos) {
   document.getElementById('ocrTipo').textContent = datos.tipo || '—';
   document.getElementById('ocrImporte').textContent = datos.importe ? datos.importe + ' €' : '—';
+  document.getElementById('ocrNumeroFactura').textContent = datos.numeroFactura || datos.numero_factura || '—';
   if (datos.importe)   document.getElementById('factImporte').value = datos.importe;
   if (datos.tipo)      document.getElementById('factTipo').value = datos.tipo;
   if (datos.fecha)     document.getElementById('factFecha').value = datos.fecha;
+  const numFact = datos.numeroFactura || datos.numero_factura || '';
+  if (numFact) document.getElementById('factNumeroFactura').value = numFact;
 
   if (datos.proveedor) {
     const candidatos = _candidatosProveedor(datos.proveedor, getProveedores());
@@ -2482,6 +2607,7 @@ async function borrarProveedor(id) {
   if (!confirm('¿Borrar el proveedor "' + p.razonSocial + '"?')) return;
   setStorage('hcarmen_proveedores', getProveedores().filter(x => x.id !== id));
   await syncData('deleteProveedor', { id });
+  registrarLog('PROVEEDOR', 'Borrado: ' + p.razonSocial);
   renderListaProveedores(document.getElementById('buscadorProveedores')?.value || '');
   showToast('Proveedor eliminado', 'ok');
 }
@@ -2494,6 +2620,21 @@ async function guardarFactura() {
   if (!proveedor) { showToast('Indica el proveedor', 'error'); return; }
   if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
 
+  const numeroFactura = document.getElementById('factNumeroFactura').value.trim();
+
+  // Comprobar duplicado por N° de factura + proveedor
+  if (numeroFactura) {
+    const existente = getStorage('hcarmen_facturas').find(f =>
+      f.numeroFactura && f.numeroFactura.toLowerCase() === numeroFactura.toLowerCase() &&
+      f.proveedor.toLowerCase() === proveedor.toLowerCase()
+    );
+    if (existente) {
+      const fecha = existente.fecha ? ' (registrada el ' + existente.fecha + ')' : '';
+      const continuar = confirm('⚠️ Ya existe una factura "' + numeroFactura + '" de ' + proveedor + fecha + '.\n¿Quieres guardarla igualmente?');
+      if (!continuar) return;
+    }
+  }
+
   const syncId = getId();
   const factura = {
     id: syncId,
@@ -2501,6 +2642,7 @@ async function guardarFactura() {
     fecha: document.getElementById('factFecha').value,
     proveedor,
     tipo: document.getElementById('factTipo').value,
+    numeroFactura,
     importeTotal: importe,
     tienda: tiendaFact,
     notas: document.getElementById('factNotas').value.trim(),
@@ -2532,7 +2674,8 @@ async function guardarFactura() {
       syncData('addFactura', {factura: {
         fecha: factura.fecha, proveedor: factura.proveedor,
         tienda: nombreTienda(factura.tienda), importe: factura.importeTotal,
-        tipo: factura.tipo, notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId
+        tipo: factura.tipo, numeroFactura: factura.numeroFactura,
+        notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId
       }}).then(ok => {
         if (ok) setStorage('hcarmen_facturas',
           getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
@@ -2553,6 +2696,7 @@ async function guardarFactura() {
     tienda: nombreTienda(factura.tienda),
     importe: factura.importeTotal,
     tipo: factura.tipo,
+    numeroFactura: factura.numeroFactura,
     notas: factura.notas,
     usuario: factura.usuario,
     syncId: factura.syncId
@@ -2562,7 +2706,10 @@ async function guardarFactura() {
   }
 
   hideLoading();
-  registrarLog('FACTURA', factura.proveedor + ' · ' + fmtEur(factura.importeTotal), nombreTienda(factura.tienda));
+  const logDetFact = factura.proveedor + ' · ' + fmtEur(factura.importeTotal) +
+    (factura.numeroFactura ? ' · N°' + factura.numeroFactura : '') +
+    ' · ' + (factura.fecha || '') + ' · ' + factura.tipo;
+  registrarLog('FACTURA', logDetFact, nombreTienda(factura.tienda));
   showToast(ok ? '✓ Factura guardada y sincronizada' : '✓ Guardada (se sincronizará después)', ok ? 'ok' : '');
   resetFormFactura();
   navBack();
@@ -2614,7 +2761,7 @@ async function guardarVenta() {
   }
 
   hideLoading();
-  registrarLog('VENTA', fmtEur(venta.total) + ' (Ef:' + fmtEur(venta.efectivo) + ' Tj:' + fmtEur(venta.tarjeta) + ')', nombreTienda(venta.tienda));
+  registrarLog('VENTA', venta.fecha + ' · ' + fmtEur(venta.total) + ' (Ef:' + fmtEur(venta.efectivo) + ' Tj:' + fmtEur(venta.tarjeta) + ')', nombreTienda(venta.tienda));
   showToast(ok ? '✓ Ventas guardadas y sincronizadas' : '✓ Guardadas (se sincronizarán después)', ok ? 'ok' : '');
   resetFormVenta();
   navBack();
@@ -2662,7 +2809,7 @@ async function guardarGasto() {
   }
 
   hideLoading();
-  registrarLog('GASTO', gasto.concepto + ' · ' + fmtEur(gasto.importe), nombreTienda(gasto.tienda));
+  registrarLog('GASTO', gasto.fecha + ' · ' + gasto.concepto + ' [' + gasto.categoria + '] · ' + fmtEur(gasto.importe), nombreTienda(gasto.tienda));
   showToast(ok ? '✓ Gasto guardado y sincronizado' : '✓ Guardado (se sincronizará después)', ok ? 'ok' : '');
   resetFormGasto();
   navBack();
@@ -2706,7 +2853,8 @@ async function cargarDatosDesdeSheet() {
         fecha: parseFecha(f.fecha), proveedor: f.proveedor || '',
         tipo: f.tipo || 'factura', importeTotal: parseFloat(f.importe) || 0,
         tienda: f.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',
-        notas: f.notas || '', synced: true
+        notas: f.notas || '', usuario: f.usuario || '',
+        numeroFactura: f.numeroFactura || '', synced: true
       }));
       const sheetIds = new Set(delSheet.map(f => f.syncId));
       setStorage('hcarmen_facturas', [...delSheet, ...pendientesF.filter(f => !sheetIds.has(f.syncId))]);
@@ -2734,13 +2882,27 @@ async function cargarDatosDesdeSheet() {
     }
 
     // Sincronizar proveedores (el Sheet manda)
-    // Apps Script devuelve { proveedores: [...] }
+    // Apps Script devuelve { proveedores: [...] } o anidado { proveedores: { proveedores: [...] } }
     const listaProv = data.proveedores && data.proveedores.proveedores
       ? data.proveedores.proveedores
       : (Array.isArray(data.proveedores) ? data.proveedores : null);
-    if (listaProv) {
+    if (listaProv && listaProv.length > 0) {
       const provLocal = getStorage('hcarmen_proveedores');
-      const provSheet = listaProv.map(p => ({...p, synced: true}));
+      const provSheet = listaProv.map(p => ({
+        id: p.id || p.Id || getId(),
+        razonSocial: p.razonSocial || p.razon_social || p.nombre || '',
+        cif: p.cif || p.CIF || '',
+        telefono: p.telefono || p.tel || '',
+        email: p.email || '',
+        web: p.web || '',
+        direccion: p.direccion || '',
+        contactoNombre: p.contactoNombre || p.contacto_nombre || '',
+        contactoTel: p.contactoTel || p.contacto_tel || '',
+        contactoEmail: p.contactoEmail || p.contacto_email || '',
+        iban: p.iban || p.IBAN || '',
+        notas: p.notas || '',
+        synced: true
+      }));
       const sheetIds = new Set(provSheet.map(p => p.id));
       const soloLocales = provLocal.filter(p => !p.synced && !sheetIds.has(p.id));
       setStorage('hcarmen_proveedores', [...provSheet, ...soloLocales]);
@@ -2758,27 +2920,35 @@ async function reintentarPendientes() {
   const facturas = getStorage('hcarmen_facturas').filter(f => !f.synced);
   const ventas = getStorage('hcarmen_ventas').filter(v => !v.synced);
   const gastos = getStorage('hcarmen_gastos').filter(g => !g.synced);
+  const proveedores = getStorage('hcarmen_proveedores').filter(p => !p.synced);
 
   for (const f of facturas) {
     const ok = await syncData('addFactura', {factura: {
       fecha: f.fecha, proveedor: f.proveedor, tienda: nombreTienda(f.tienda),
-      importe: f.importeTotal, tipo: f.tipo, notas: f.notas, syncId: f.syncId
+      importe: f.importeTotal, tipo: f.tipo, numeroFactura: f.numeroFactura || '',
+      notas: f.notas, usuario: f.usuario || '', syncId: f.syncId
     }});
     if (ok) setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x => x.id===f.id ? {...x, synced:true} : x));
   }
   for (const v of ventas) {
     const ok = await syncData('addVenta', {venta: {
       fecha: v.fecha, tienda: nombreTienda(v.tienda),
-      efectivo: v.efectivo, tarjeta: v.tarjeta, total: v.total, notas: v.notas, syncId: v.syncId
+      efectivo: v.efectivo, tarjeta: v.tarjeta, total: v.total, notas: v.notas,
+      usuario: v.usuario || '', syncId: v.syncId
     }});
     if (ok) setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(x => x.id===v.id ? {...x, synced:true} : x));
   }
   for (const g of gastos) {
     const ok = await syncData('addGasto', {gasto: {
       fecha: g.fecha, concepto: g.concepto, tienda: nombreTienda(g.tienda),
-      importe: g.importe, categoria: g.categoria, notas: g.notas, syncId: g.syncId
+      importe: g.importe, categoria: g.categoria, notas: g.notas,
+      usuario: g.usuario || '', syncId: g.syncId
     }});
     if (ok) setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(x => x.id===g.id ? {...x, synced:true} : x));
+  }
+  for (const p of proveedores) {
+    const ok = await syncData('saveProveedor', { proveedor: p, isEdit: true });
+    if (ok) setStorage('hcarmen_proveedores', getStorage('hcarmen_proveedores').map(x => x.id===p.id ? {...x, synced:true} : x));
   }
   updateSyncBar();
 }
@@ -3058,14 +3228,68 @@ function renderProveedores() {
   }
 
   lista.innerHTML = sorted.map(([prov, data]) => `
-    <div class="proveedor-row">
+    <div class="proveedor-row" onclick="verDetalleProveedor(${JSON.stringify(prov)})" style="cursor:pointer">
       <div>
         <div class="proveedor-name">🚚 ${prov}</div>
         <div class="proveedor-facturas">${data.count} factura${data.count!==1?'s':''}</div>
       </div>
-      <div class="proveedor-total">${fmtEur(data.total)}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="proveedor-total">${fmtEur(data.total)}</div>
+        <div style="font-size:18px;color:var(--gris)">›</div>
+      </div>
     </div>
   `).join('');
+}
+
+function verDetalleProveedor(nombre) {
+  const provBD = getProveedores().find(p => p.razonSocial === nombre);
+  const todasFacturas = getStorage('hcarmen_facturas')
+    .filter(f => (f.proveedor || '').toLowerCase() === nombre.toLowerCase())
+    .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  document.getElementById('detalleProvNombre').textContent = nombre;
+
+  // Datos del proveedor desde BD
+  const datosDiv = document.getElementById('detalleProvDatos');
+  if (provBD) {
+    const campos = [
+      provBD.cif         && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">CIF</span><span style="font-size:13px;font-weight:600">${provBD.cif}</span></div>`,
+      provBD.telefono    && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">Teléfono</span><a href="tel:${provBD.telefono}" style="font-size:13px;font-weight:600;color:var(--verde);text-decoration:none">${provBD.telefono}</a></div>`,
+      provBD.email       && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">Email</span><a href="mailto:${provBD.email}" style="font-size:13px;font-weight:600;color:var(--verde);text-decoration:none">${provBD.email}</a></div>`,
+      provBD.direccion   && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">Dirección</span><span style="font-size:13px">${provBD.direccion}</span></div>`,
+      provBD.iban        && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">IBAN</span><span style="font-size:13px;font-family:monospace">${provBD.iban}</span></div>`,
+      provBD.contactoNombre && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">Contacto</span><span style="font-size:13px">${provBD.contactoNombre}${provBD.contactoTel ? ' · ' + provBD.contactoTel : ''}</span></div>`,
+      provBD.notas       && `<div style="display:flex;gap:8px;margin-bottom:6px"><span style="color:var(--gris);font-size:13px;min-width:80px">Notas</span><span style="font-size:13px;font-style:italic">${provBD.notas}</span></div>`,
+    ].filter(Boolean);
+    datosDiv.innerHTML = campos.length
+      ? `<div style="background:var(--gris-claro);border-radius:10px;padding:12px 14px">${campos.join('')}</div>`
+      : `<div style="color:var(--gris);font-size:13px;font-style:italic">Sin datos adicionales en la base de datos.</div>`;
+  } else {
+    datosDiv.innerHTML = `<div style="background:#fef9c3;border-radius:10px;padding:10px 14px;font-size:13px;color:#92400e">⚠️ Este proveedor no está en tu base de datos de proveedores.</div>`;
+  }
+
+  // Listado de facturas
+  const facDiv = document.getElementById('detalleProvFacturas');
+  if (!todasFacturas.length) {
+    facDiv.innerHTML = `<div style="color:var(--gris);font-size:13px;font-style:italic;padding:8px 0">Sin documentos registrados.</div>`;
+  } else {
+    const total = todasFacturas.reduce((s, f) => s + (f.importeTotal || 0), 0);
+    facDiv.innerHTML = `<div style="font-size:12px;color:var(--gris);margin-bottom:8px">${todasFacturas.length} documento${todasFacturas.length!==1?'s':''} · Total: <strong>${fmtEur(total)}</strong></div>` +
+      todasFacturas.map(f => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--gris-claro);border-radius:9px;margin-bottom:6px">
+          <div>
+            <div style="font-size:13px;font-weight:600">${f.tipo || 'factura'}${f.numeroFactura ? ' · N°' + f.numeroFactura : ''}</div>
+            <div style="font-size:11px;color:var(--gris)">${f.fecha || ''}${f.tienda ? ' · ' + nombreTienda(f.tienda) : ''}${f.usuario ? ' · ' + f.usuario : ''}</div>
+          </div>
+          <div style="font-size:14px;font-weight:700;color:var(--naranja)">${fmtEur(f.importeTotal)}</div>
+        </div>`).join('');
+  }
+
+  document.getElementById('modalDetalleProveedor').style.display = 'flex';
+}
+
+function cerrarDetalleProveedor() {
+  document.getElementById('modalDetalleProveedor').style.display = 'none';
 }
 
 // ── HELPERS ──
@@ -3100,6 +3324,11 @@ function resetFormFactura() {
   document.getElementById('factImporte').value = '';
   document.getElementById('factNotas').value = '';
   document.getElementById('factFecha').value = '';
+  document.getElementById('factNumeroFactura').value = '';
+  document.getElementById('ocrNumeroFactura').textContent = '—';
+  const thumbs = document.getElementById('multiImageThumbs');
+  if (thumbs) thumbs.innerHTML = '';
+  _paginasBase64 = [];
   document.getElementById('ocrResultDiv').style.display = 'none';
   document.getElementById('photoPreview').style.display = 'none';
   document.getElementById('cameraOverlay').style.display = 'flex';

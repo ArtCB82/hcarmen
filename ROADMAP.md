@@ -37,9 +37,17 @@
 - [x] `deleteProveedor` para borrar filas del Sheet tab `Proveedores`
 - [x] `getProveedores` devuelve `{ proveedores: [...] }` — el frontend maneja ambos formatos
 
+### OCR — Cotejo inteligente de proveedor
+- [x] Distancia Levenshtein normalizada para comparar el texto OCR contra la BD de proveedores
+- [x] Score ≥ 0.85 → selección automática; score 0.45–0.85 → modal con candidatos ordenados por similitud
+- [x] Normalización previa: sin acentos, sin formas jurídicas (SL, SA, CB…), sin puntuación
+
+### Gastos manuales
+- [x] Categorías predefinidas (9): Alquiler, Transporte/Gasolina, Suministros, Personal, Material, Reparaciones, Impuestos, Gestoría, Otros
+
 ### UX y navegación
 - [x] Botón atrás del navegador/móvil funciona correctamente (History API — `pushState` + `popstate`)
-- [x] Usuarios hardcodeados en el código — eliminada gestión dinámica desde Admin (lista `USUARIOS` en index.html)
+- [x] Usuarios hardcodeados en el código — eliminada gestión dinámica desde Admin (lista `USUARIOS` en index.html); 6 usuarios activos (Arturo admin, Arturo H, Arturo P, Carmen, Alvaro, Sonia)
 - [x] Campo `usuario` registrado en facturas, ventas y gastos — visible en el historial
 
 ### Bugs resueltos
@@ -47,8 +55,25 @@
 - [x] Al editar proveedor se creaba fila nueva en lugar de actualizar — faltaba pasar `isEdit: true`
 - [x] Autocomplete se desplegaba al entrar a la pantalla (onfocus) — eliminado, solo se activa con oninput
 
+### Facturas
+- [x] Campo N° Factura / Albarán con detección de duplicados (mismo N° + mismo proveedor)
+- [x] N° Factura extraído automáticamente por OCR y editable
+- [x] Campo `usuario` preservado en carga desde Sheet y en reintento de sync
+
+### OCR de facturas — mejoras
+- [x] Calidad de imagen subida: 600px / 75% → 1600px / 88% (mejor legibilidad de texto)
+- [x] Polling ampliado: 5 intentos × 2s → 10 intentos × 3s (hasta 30s de espera)
+- [x] Soporte para subir múltiples imágenes (páginas de una factura larga) — se fusionan verticalmente antes de enviar al OCR
+- [x] Soporte para subir PDF — se renderizan con pdf.js y se fusionan igual que multi-imagen (máx 4 páginas)
+
+### Sync
+- [x] Reintento de proveedores pendientes en `reintentarPendientes()` (antes solo facturas/ventas/gastos)
+- [x] Mapeo explícito de campos de proveedor al cargar desde Sheet (tolerante a variantes de nombre de columna)
+
+### Proveedores
+- [x] Click en proveedor (pantalla Compras por Proveedor) abre modal con datos de BD + historial de documentos
+
 ## Pendiente
 
-- [ ] Verificar sincronización de proveedores en tiempo real (comprobar en Sheet tras guardar/editar/borrar)
 - [ ] Desglose de artículos en líneas de factura (OCR línea a línea, no solo importe total)
 - [ ] Notificaciones / alertas de gastos por encima de umbral mensual configurable

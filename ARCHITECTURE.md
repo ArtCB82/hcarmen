@@ -25,7 +25,7 @@ Google Apps Script (doGet / doPost)
 | Pantalla (id) | Descripción |
 |---|---|
 | `screen-home` | Menú principal |
-| `screen-venta` | Registro de venta diaria |
+| `screen-ventas` | Registro de venta diaria |
 | `screen-factura` | Escanear / registrar factura o albarán |
 | `screen-gasto` | Registro manual de gasto |
 | `screen-resumen` | Resumen mensual con KPIs y gráfica semanal |
@@ -51,7 +51,7 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | Clave | Contenido |
 |---|---|
 | `hcarmen_ventas` | Array de ventas diarias |
-| `hcarmen_facturas` | Array de facturas/albaranes |
+| `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, tipo, numeroFactura, importeTotal, tienda, notas, usuario, synced) |
 | `hcarmen_gastos` | Array de gastos manuales |
 | `hcarmen_proveedores` | Array de proveedores (BD local) |
 | `hcarmen_session` | Sesión activa (usuario + expiración) |
@@ -66,6 +66,20 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 - Se hace **POST no-cors** (fetch mode `no-cors`) para enviar la imagen en base64.
 - El Apps Script procesa la imagen con Claude API de forma asíncrona.
 - El frontend hace **polling** (GET periódico) hasta recibir el resultado.
+
+### Subida de archivos
+- **Imágenes** (una o varias): el input `#fileInput` acepta `image/*` con atributo `multiple`. Si se seleccionan varias, se fusionan verticalmente en un canvas antes de enviar al OCR — así se tratan facturas de varias páginas sin cambios en el backend.
+- **PDF**: se renderiza con `pdf.js` (CDN `3.11.174`) a escala 2× por página, se fusionan las páginas (máx 4) y se envía como imagen JPEG igual que las imágenes normales.
+- Calidad de compresión: max 1600px, JPEG 88%.
+
+### Cotejo inteligente de proveedor (post-OCR)
+Tras recibir el nombre del proveedor del OCR, el frontend lo compara contra la BD local de proveedores usando distancia Levenshtein normalizada:
+- `_normProv()` — normaliza texto: minúsculas, sin acentos, sin formas jurídicas (SL, SA, CB…)
+- `_levenshtein()` — distancia de edición entre dos cadenas
+- `_similitudProv()` — devuelve score 0–1; también detecta substring (score 0.92)
+- `_candidatosProveedor()` — filtra candidatos con score ≥ 0.45, devuelve top 5
+
+Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y porcentaje de similitud. Si el score top es ≥ 0.85 se selecciona automáticamente sin modal.
 
 ### Acciones implementadas en Apps Script
 
