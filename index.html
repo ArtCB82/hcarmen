@@ -1905,12 +1905,18 @@
 ════════════════════════════════════════ -->
 <div class="modal-overlay" id="modalDetalleProveedor" style="display:none" onclick="if(event.target===this)cerrarDetalleProveedor()">
   <div class="modal-card" style="max-width:480px;width:100%;max-height:90vh;overflow-y:auto">
-    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <h3 id="detalleProvNombre" style="margin:0;font-size:18px;color:var(--verde)"></h3>
-      <button onclick="cerrarDetalleProveedor()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris);line-height:1">×</button>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+      <div>
+        <h3 id="detalleProvNombre" style="margin:0 0 2px;font-size:18px;color:var(--verde)"></h3>
+        <div id="detalleProvSubtitulo" style="font-size:12px;color:var(--gris);font-weight:600;text-transform:uppercase;letter-spacing:0.5px"></div>
+      </div>
+      <button onclick="cerrarDetalleProveedor()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris);line-height:1;flex-shrink:0;margin-left:12px">×</button>
     </div>
-    <div id="detalleProvDatos" style="margin-bottom:16px"></div>
-    <div class="section-label" style="margin-bottom:8px">Documentos registrados</div>
+    <div id="detalleProvDatos" style="margin:14px 0 16px"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div class="section-label" style="margin:0">Documentos registrados</div>
+      <button id="detalleProvVerTodos" onclick="" style="display:none;background:none;border:none;color:var(--verde);font-size:12px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;text-decoration:underline">Ver todos</button>
+    </div>
     <div id="detalleProvFacturas"></div>
   </div>
 </div>
@@ -2598,7 +2604,26 @@ function renderListaProveedores(filtro) {
     lista.innerHTML = '<div class="empty-state"><div class="empty-icon">🏢</div><h3>Sin proveedores</h3><p>Añade tu primer proveedor.</p></div>';
     return;
   }
-  lista.innerHTML = provs.map(p => '<div class="item-card"><div class="item-tipo-dot factura">🏢</div><div class="item-info"><div class="item-titulo">' + p.razonSocial + '</div><div class="item-meta"><span>' + (p.cif||'Sin CIF') + '</span>' + (p.telefono ? '<span>' + p.telefono + '</span>' : '') + '</div><div class="item-synced">' + (p.synced ? '☁️ Sincronizado' : '⏳ Pendiente') + '</div></div><div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0"><button onclick="mostrarModalProveedor(\'' + p.id + '\')" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">✏️ Editar</button><button onclick="borrarProveedor(\'' + p.id + '\')" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">🗑 Borrar</button></div></div>').join('');
+  lista.innerHTML = provs.map(p => {
+    const safeNombre = p.razonSocial.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const nDocs = getStorage('hcarmen_facturas').filter(f => (f.proveedor||'').toLowerCase() === p.razonSocial.toLowerCase()).length;
+    return '<div class="item-card" onclick="verDetalleProveedor(\'' + safeNombre + '\')" style="cursor:pointer">' +
+      '<div class="item-tipo-dot factura">🏢</div>' +
+      '<div class="item-info">' +
+        '<div class="item-titulo">' + p.razonSocial + '</div>' +
+        '<div class="item-meta">' +
+          '<span>' + (p.cif||'Sin CIF') + '</span>' +
+          (p.telefono ? '<span>' + p.telefono + '</span>' : '') +
+          (nDocs ? '<span>' + nDocs + ' doc' + (nDocs!==1?'s':'') + '</span>' : '') +
+        '</div>' +
+        '<div class="item-synced">' + (p.synced ? '☁️ Sincronizado' : '⏳ Pendiente') + '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">' +
+        '<button onclick="mostrarModalProveedor(\'' + p.id + '\')" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">✏️ Editar</button>' +
+        '<button onclick="borrarProveedor(\'' + p.id + '\')" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">🗑 Borrar</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 async function borrarProveedor(id) {
@@ -3227,27 +3252,47 @@ function renderProveedores() {
     return;
   }
 
-  lista.innerHTML = sorted.map(([prov, data]) => `
-    <div class="proveedor-row" onclick="verDetalleProveedor(${JSON.stringify(prov)})" style="cursor:pointer">
+  lista.innerHTML = sorted.map(([prov, data]) => {
+    const safeProv = prov.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    return `<div class="proveedor-row" onclick="verDetalleProveedor('${safeProv}',{y:${y},m:${m}})" style="cursor:pointer">
       <div>
         <div class="proveedor-name">🚚 ${prov}</div>
-        <div class="proveedor-facturas">${data.count} factura${data.count!==1?'s':''}</div>
+        <div class="proveedor-facturas">${data.count} factura${data.count!==1?'s':''} · toca para ver</div>
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="proveedor-total">${fmtEur(data.total)}</div>
-        <div style="font-size:18px;color:var(--gris)">›</div>
+        <div style="font-size:20px;color:var(--verde);font-weight:700">›</div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
-function verDetalleProveedor(nombre) {
+function verDetalleProveedor(nombre, filtroMes) {
   const provBD = getProveedores().find(p => p.razonSocial === nombre);
   const todasFacturas = getStorage('hcarmen_facturas')
     .filter(f => (f.proveedor || '').toLowerCase() === nombre.toLowerCase())
     .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 
+  // Si viene con filtro de mes (desde pantalla Compras), mostrar solo ese mes
+  const facturasMostradas = filtroMes
+    ? todasFacturas.filter(f => enMes(f.fecha, filtroMes.y, filtroMes.m))
+    : todasFacturas;
+
+  const subtitulo = filtroMes
+    ? `${MESES[filtroMes.m]} ${filtroMes.y}`
+    : 'Todos los documentos';
+
   document.getElementById('detalleProvNombre').textContent = nombre;
+  document.getElementById('detalleProvSubtitulo').textContent = subtitulo;
+
+  // Botón "ver todos" solo cuando hay filtro de mes y existen docs de otros meses
+  const btnVerTodos = document.getElementById('detalleProvVerTodos');
+  if (filtroMes && todasFacturas.length > facturasMostradas.length) {
+    btnVerTodos.style.display = 'inline-block';
+    btnVerTodos.onclick = () => verDetalleProveedor(nombre);
+  } else {
+    btnVerTodos.style.display = 'none';
+  }
 
   // Datos del proveedor desde BD
   const datosDiv = document.getElementById('detalleProvDatos');
@@ -3270,12 +3315,15 @@ function verDetalleProveedor(nombre) {
 
   // Listado de facturas
   const facDiv = document.getElementById('detalleProvFacturas');
-  if (!todasFacturas.length) {
-    facDiv.innerHTML = `<div style="color:var(--gris);font-size:13px;font-style:italic;padding:8px 0">Sin documentos registrados.</div>`;
+  if (!facturasMostradas.length) {
+    const msgVacio = filtroMes
+      ? `Sin documentos de ${MESES[filtroMes.m]} ${filtroMes.y}.`
+      : 'Sin documentos registrados.';
+    facDiv.innerHTML = `<div style="color:var(--gris);font-size:13px;font-style:italic;padding:8px 0">${msgVacio}</div>`;
   } else {
-    const total = todasFacturas.reduce((s, f) => s + (f.importeTotal || 0), 0);
-    facDiv.innerHTML = `<div style="font-size:12px;color:var(--gris);margin-bottom:8px">${todasFacturas.length} documento${todasFacturas.length!==1?'s':''} · Total: <strong>${fmtEur(total)}</strong></div>` +
-      todasFacturas.map(f => `
+    const total = facturasMostradas.reduce((s, f) => s + (f.importeTotal || 0), 0);
+    facDiv.innerHTML = `<div style="font-size:12px;color:var(--gris);margin-bottom:8px">${facturasMostradas.length} documento${facturasMostradas.length!==1?'s':''} · Total: <strong>${fmtEur(total)}</strong></div>` +
+      facturasMostradas.map(f => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--gris-claro);border-radius:9px;margin-bottom:6px">
           <div>
             <div style="font-size:13px;font-weight:600">${f.tipo || 'factura'}${f.numeroFactura ? ' · N°' + f.numeroFactura : ''}</div>
