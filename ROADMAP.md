@@ -70,8 +70,12 @@
 - [x] Reintento de proveedores pendientes en `reintentarPendientes()` (antes solo facturas/ventas/gastos)
 - [x] Mapeo explícito de campos de proveedor al cargar desde Sheet (tolerante a variantes de nombre de columna)
 
-### Proveedores
-- [x] Click en proveedor (pantalla Compras por Proveedor) abre modal con datos de BD + historial de documentos
+### Proveedores — detalle y navegación
+- [x] Click en proveedor (pantalla **Compras por Proveedor**) abre bottom sheet con datos de BD + facturas de ese mes; botón "Ver todos" si hay docs de otros meses
+- [x] Click en proveedor (pantalla **Gestión de Proveedores**) abre el mismo bottom sheet con todos los documentos históricos; tarjeta muestra contador de documentos
+- [x] Bottom sheet: tirador visual, cabecera fija, cuerpo scrollable; datos con icono + label + valor; documentos con icono por tipo (🧾/📋/🎫) y total en resumen verde
+- [x] Botones Editar/Borrar en gestión usan `stopPropagation` para no interferir con el click de la tarjeta
+- [x] Bug corregido: `JSON.stringify` en atributo `onclick` producía comillas dobles que rompían el HTML — solucionado con escape manual de comillas simples
 
 ## Pendiente
 

@@ -52,9 +52,11 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 |---|---|
 | `hcarmen_ventas` | Array de ventas diarias |
 | `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, tipo, numeroFactura, importeTotal, tienda, notas, usuario, synced) |
-| `hcarmen_gastos` | Array de gastos manuales |
+| `hcarmen_gastos` | Array de gastos manuales (campos: syncId, fecha, concepto, categoria, importe, tienda, notas, usuario, synced) |
 | `hcarmen_proveedores` | Array de proveedores (BD local) |
 | `hcarmen_session` | Sesión activa (usuario + expiración) |
+| `hcarmen_log` | Array de entradas de actividad (máx 300 locales; se sincroniza con Sheet tab Log) |
+| `hcarmen_api_usage` | Objeto `{ "YYYY-MM": N }` con contador de llamadas OCR por mes (local) |
 
 ## Comunicación con el backend
 
@@ -100,6 +102,7 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `deleteProveedor` | GET/POST | Borra proveedor por id |
 | `addLog` | GET/POST | Añade entrada en tab Log |
 | `analizarFoto` | POST no-cors | OCR con Claude API, resultado en PropertiesService |
+| `getOcrResult` | GET | Polling: devuelve resultado del OCR por `tempId` (`{ success, datos }` o `{ pending: true }`) |
 
 ## Exportación de informes PDF
 
@@ -112,7 +115,8 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 
 | Librería | Uso |
 |---|---|
-| Chart.js (CDN) | Gráficas en estadísticas y resumen mensual |
+| Chart.js 4.4.1 (CDN) | Gráficas en estadísticas y resumen mensual |
+| pdf.js 3.11.174 (CDN) | Renderizado de PDF a canvas para enviar al OCR como imagen |
 
 ## Lecciones aprendidas (trampas conocidas)
 
@@ -124,3 +128,5 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | CORS en Apps Script | Usar GET con JSON en parámetro; POST solo para no-cors (OCR) |
 | `onfocus` en autocomplete | Causaba que el desplegable se abriera al entrar a la pantalla; eliminado, solo `oninput` |
 | `isEdit` en saveProveedor | Hay que pasarlo explícitamente desde el frontend; sin él siempre crea fila nueva |
+| `JSON.stringify` en atributo `onclick` | Produce comillas dobles que rompen el atributo HTML; solución: escape manual con `str.replace(/'/g, "\\'")` y usar comillas simples en el JS del atributo |
+| `modal-card` sin CSS | La clase no existía y el modal salía transparente; solución: estilos inline en el elemento o usar la clase `modal-box` ya definida |
