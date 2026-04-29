@@ -57,6 +57,7 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | `hcarmen_session` | Sesión activa (usuario + expiración) |
 | `hcarmen_log` | Array de entradas de actividad (máx 300 locales; se sincroniza con Sheet tab Log) |
 | `hcarmen_api_usage` | Objeto `{ "YYYY-MM": N }` con contador de llamadas OCR por mes (local) |
+| `hcarmen_reparto_config` | Objeto con `diasSA`, `diasJdG` y `categorias` (criterio de reparto por categoría) |
 
 ## Comunicación con el backend
 
@@ -103,6 +104,27 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `addLog` | GET/POST | Añade entrada en tab Log |
 | `analizarFoto` | POST no-cors | OCR con Claude API, resultado en PropertiesService |
 | `getOcrResult` | GET | Polling: devuelve resultado del OCR por `tempId` (`{ success, datos }` o `{ pending: true }`) |
+
+## Reparto de gastos comunes entre tiendas
+
+Los gastos con `tienda = 'ambas'` se reparten automáticamente entre SA y JdG en el Resumen Mensual.
+
+### Criterios de reparto (campo `categorias` en `REPARTO_CONFIG`)
+
+| Criterio | Fórmula |
+|---|---|
+| `dias` | 4/7 → SA, 3/7 → JdG (días de apertura semanales) |
+| `50/50` | Mitad exacta a cada tienda |
+| `ventas` | Proporcional a las ventas del mes (requiere datos de ventas del mismo mes) |
+| `directa` | No se reparte (solo asignable a una tienda concreta) |
+
+La configuración por defecto (`REPARTO_CONFIG_DEFAULT`) asigna:
+- `Personal`, `Transporte/Gasolina` → `dias`
+- `Gestoría`, `Impuestos` → `50/50`
+- `Alquiler`, `Suministros`, `Reparaciones` → `directa`
+- `Material`, `Otros`, facturas (`_factura`) → `ventas`
+
+El administrador puede cambiar días de apertura y criterio por categoría desde el panel de admin; los cambios se persisten en `hcarmen_reparto_config`.
 
 ## Exportación de informes PDF
 

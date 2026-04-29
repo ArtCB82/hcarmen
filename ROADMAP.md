@@ -77,6 +77,17 @@
 - [x] Botones Editar/Borrar en gestión usan `stopPropagation` para no interferir con el click de la tarjeta
 - [x] Bug corregido: `JSON.stringify` en atributo `onclick` producía comillas dobles que rompían el HTML — solucionado con escape manual de comillas simples
 
+### Reparto de gastos comunes
+- [x] Opción **Ambas tiendas** en registro de facturas y gastos manuales (gasto compartido entre las dos tiendas)
+- [x] Motor de reparto `calcularReparto()` con cuatro criterios: `dias` (4/7 SA, 3/7 JdG), `50/50`, `ventas` (proporcional a ventas del mes), `directa` (sin reparto — solo asignable a una tienda)
+- [x] `REPARTO_CONFIG_DEFAULT` con criterio predefinido por categoría de gasto y para facturas
+- [x] Configuración persistida en localStorage (`hcarmen_reparto_config`) — editable desde el panel de administración
+- [x] Resumen mensual: nueva sección **Gastos Comunes** con importe total y desglose SA / JdG según criterio configurado
+- [x] Panel de admin: sección "Configuración de Reparto" con inputs de días de apertura y selector por categoría
+- [x] Fix: `nombreTienda()` devuelve 'Ambas tiendas' para el valor `'ambas'`
+- [x] Fix: `cargarDatosDesdeSheet()` mapea 'Ambas tiendas' a `'ambas'` (antes caía en `'tienda2'` por ternario binario)
+- [x] Fix: `resetFormGasto()` y `resetFormFactura()` limpian visualmente el botón Ambas al resetear el formulario
+
 ## Pendiente
 
 - [ ] Desglose de artículos en líneas de factura (OCR línea a línea, no solo importe total)
