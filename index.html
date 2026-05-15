@@ -1209,6 +1209,7 @@
     <span id="syncBarText">Todo sincronizado</span>
     <button id="btnReintentar" onclick="reintentarPendientes()" style="display:none;margin-left:auto;background:var(--naranja);color:white;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">Reintentar</button>
   </div>
+  <div id="appVersionBadge" style="text-align:center;padding:10px 0 18px;font-size:11px;color:var(--gris);letter-spacing:0.3px;opacity:0.6"></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -2034,6 +2035,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
+const APP_VERSION = 'v1.6.0';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 
 // ── ESTADO ──
@@ -2163,6 +2165,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const hoy = new Date();
   const fechaEl = document.getElementById('fechaHoy');
   if (fechaEl) fechaEl.textContent = hoy.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  const vBadge = document.getElementById('appVersionBadge');
+  if (vBadge) vBadge.textContent = 'Alimentación HCarmen · ' + APP_VERSION;
 
   // Intentar recuperar sesión activa
   if (recuperarSesion()) {

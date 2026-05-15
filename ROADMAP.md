@@ -55,10 +55,22 @@
 - [x] Al editar proveedor se creaba fila nueva en lugar de actualizar — faltaba pasar `isEdit: true`
 - [x] Autocomplete se desplegaba al entrar a la pantalla (onfocus) — eliminado, solo se activa con oninput
 
-### Facturas
+### Facturas y gastos — detección de duplicados
 - [x] Campo N° Factura / Albarán con detección de duplicados (mismo N° + mismo proveedor)
 - [x] N° Factura extraído automáticamente por OCR y editable
 - [x] Campo `usuario` preservado en carga desde Sheet y en reintento de sync
+- [x] Modal de duplicado en `guardarFactura()`: comprobación A por N° referencia + proveedor (case-insensitive); comprobación B por fecha + proveedor + importe (±0.01€) — ambas independientes, se acumulan en un único modal con detalle del doc existente y botones "Guardar de todas formas" / "Cancelar"
+- [x] Modal de duplicado en `guardarGasto()`: comprobación por fecha + categoría + importe (±0.01€)
+
+### Proveedores — reasignación al eliminar
+- [x] Al borrar un proveedor con facturas/albaranes asociados, se muestra modal de reasignación con selector de proveedor destino
+- [x] Reasignación sincroniza cada factura al Apps Script secuencialmente (`addFactura` con `syncId` para upsert) con indicador de progreso
+- [x] Si alguna sincronización falla, se muestra el conteo de errores y el proveedor NO se elimina (consistencia)
+- [x] Si no hay facturas asociadas, flujo de borrado simple sin cambios
+
+### Versión de la app
+- [x] Constante `APP_VERSION` en el JS del frontend
+- [x] Badge de versión visible al final de la pantalla Home (texto pequeño, no intrusivo)
 
 ### OCR de facturas — mejoras
 - [x] Calidad de imagen subida: 600px / 75% → 1600px / 88% (mejor legibilidad de texto)
@@ -90,5 +102,6 @@
 
 ## Pendiente
 
+- [ ] Upsert en Apps Script por `syncId` para `addFactura` (necesario para que la reasignación de proveedor sobreescriba la fila existente en lugar de crear una nueva)
 - [ ] Desglose de artículos en líneas de factura (OCR línea a línea, no solo importe total)
 - [ ] Notificaciones / alertas de gastos por encima de umbral mensual configurable

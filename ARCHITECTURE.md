@@ -95,7 +95,7 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `getProveedores` | GET | Devuelve `{ proveedores: [...] }` |
 | `getApiUsage` | GET | Uso de Claude API por mes |
 | `testApi` | GET | Test de conectividad con Claude |
-| `addFactura` | GET/POST | Añade fila en tab Facturas |
+| `addFactura` | GET/POST | Añade fila en tab Facturas — **pendiente**: hacer upsert por `syncId` (si existe la fila, sobreescribir) |
 | `addVenta` | GET/POST | Añade o actualiza fila en tab Ventas |
 | `addGasto` | GET/POST | Añade fila en tab Gastos_Manual |
 | `deleteRegistro` | GET/POST | Borra por syncId en Facturas/Ventas/Gastos |
@@ -140,6 +140,22 @@ El administrador puede cambiar días de apertura y criterio por categoría desde
 | Chart.js 4.4.1 (CDN) | Gráficas en estadísticas y resumen mensual |
 | pdf.js 3.11.174 (CDN) | Renderizado de PDF a canvas para enviar al OCR como imagen |
 
+## Versioning
+
+La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del script) controla la versión visible en la app. Se muestra en un badge pequeño al final de la pantalla Home (`#appVersionBadge`).
+
+**Historial de versiones:**
+
+| Versión | Cambios principales |
+|---|---|
+| v1.6.0 | Detección de duplicados en facturas (×2 comprobaciones) y gastos; reasignación de docs al borrar proveedor |
+| v1.5.x | Reparto de gastos comunes entre tiendas; configuración de reparto en panel admin |
+| v1.4.x | Bottom sheet de detalle de proveedor; botones Editar/Borrar con stopPropagation |
+| v1.3.x | OCR multi-imagen y PDF; cotejo inteligente de proveedor (Levenshtein); N° factura |
+| v1.2.x | Estadísticas avanzadas; exportación PDF; categorías de gastos |
+| v1.1.x | Base de datos de proveedores; autocomplete; ranking con variación de precio |
+| v1.0.0 | Core: ventas, facturas, gastos, resumen mensual, login por PIN |
+
 ## Lecciones aprendidas (trampas conocidas)
 
 | Problema | Solución |
@@ -152,3 +168,4 @@ El administrador puede cambiar días de apertura y criterio por categoría desde
 | `isEdit` en saveProveedor | Hay que pasarlo explícitamente desde el frontend; sin él siempre crea fila nueva |
 | `JSON.stringify` en atributo `onclick` | Produce comillas dobles que rompen el atributo HTML; solución: escape manual con `str.replace(/'/g, "\\'")` y usar comillas simples en el JS del atributo |
 | `modal-card` sin CSS | La clase no existía y el modal salía transparente; solución: estilos inline en el elemento o usar la clase `modal-box` ya definida |
+| `let` en variables de callback de modal | Las variables `_dupFacturaResolver` / `_dupGastoResolver` se asignan a funciones para resolver Promises desde botones onclick; funcionan en scripts no-módulo porque top-level `let` está en el scope global |
