@@ -1798,6 +1798,54 @@
 </div>
 
 <!-- ══════════════════════════════════════
+     MODAL DUPLICADO FACTURA/ALBARÁN
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalDuplicadoFactura" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">⚠️ Posible duplicado</div>
+    <div style="font-size:14px;color:var(--gris);margin-bottom:12px">Se encontraron documentos similares ya registrados:</div>
+    <div id="dupFacturaLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:4px"></div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="_dupFacturaResolver(false)">Cancelar</button>
+      <button onclick="_dupFacturaResolver(true)" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--naranja);color:white;font-family:'Lato',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Guardar de todas formas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL DUPLICADO GASTO
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalDuplicadoGasto" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">⚠️ Posible duplicado</div>
+    <div style="font-size:14px;color:var(--gris);margin-bottom:12px">Ya existe un gasto similar registrado:</div>
+    <div id="dupGastoInfo" style="background:var(--naranja-suave);border-radius:10px;padding:12px;margin-bottom:4px;font-size:13px;color:var(--texto)"></div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="_dupGastoResolver(false)">Cancelar</button>
+      <button onclick="_dupGastoResolver(true)" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--naranja);color:white;font-family:'Lato',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Guardar de todas formas</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL REASIGNAR PROVEEDOR
+════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalReasignarProveedor" style="display:none">
+  <div class="modal-box">
+    <div class="modal-title">Eliminar proveedor</div>
+    <div id="reasignarAviso" style="font-size:14px;color:var(--texto);background:var(--naranja-suave);border-radius:10px;padding:12px;margin-bottom:14px"></div>
+    <div style="font-size:13px;font-weight:700;color:var(--gris);margin-bottom:6px">Reasignar documentos a:</div>
+    <select id="reasignarSelector" class="field-select" style="margin-bottom:4px" onchange="var b=document.getElementById('btnReasignarConfirmar');b.disabled=!this.value;b.style.opacity=this.value?'1':'0.5'">
+      <option value="">— Selecciona un proveedor —</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarModalReasignar()">Cancelar</button>
+      <button id="btnReasignarConfirmar" disabled onclick="confirmarReasignacion()" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--rojo);color:white;font-family:'Lato',sans-serif;font-size:15px;font-weight:700;cursor:pointer;opacity:0.5">Reasignar y eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
      PANTALLA: HISTORIAL
 ════════════════════════════════════════ -->
 <div class="screen" id="screen-historial">
@@ -2732,15 +2780,158 @@ function renderListaProveedores(filtro) {
   }).join('');
 }
 
+let _proveedorABorrarId = null;
+
 async function borrarProveedor(id) {
   const p = getProveedores().find(x => x.id === id);
   if (!p) return;
-  if (!confirm('¿Borrar el proveedor "' + p.razonSocial + '"?')) return;
+  const facturasAsociadas = getStorage('hcarmen_facturas').filter(f =>
+    (f.proveedor||'').toLowerCase().trim() === p.razonSocial.toLowerCase().trim()
+  );
+  if (facturasAsociadas.length === 0) {
+    if (!confirm('¿Borrar el proveedor "' + p.razonSocial + '"?')) return;
+    await _ejecutarBorradoProveedor(id, p.razonSocial);
+    return;
+  }
+  // Tiene facturas asociadas: mostrar modal de reasignación
+  _proveedorABorrarId = id;
+  const n = facturasAsociadas.length;
+  document.getElementById('reasignarAviso').innerHTML =
+    'El proveedor <strong>' + p.razonSocial + '</strong> tiene <strong>' + n + ' documento' + (n!==1?'s':'') + '</strong> asociado' + (n!==1?'s':'') + '.<br>' +
+    'Selecciona a qué proveedor reasignarlos antes de eliminar.';
+  const sel = document.getElementById('reasignarSelector');
+  const otros = getProveedores().filter(x => x.id !== id);
+  sel.innerHTML = '<option value="">— Selecciona un proveedor —</option>' +
+    otros.map(x => '<option value="' + x.id + '">' + x.razonSocial + '</option>').join('');
+  sel.value = '';
+  document.getElementById('btnReasignarConfirmar').disabled = true;
+  document.getElementById('btnReasignarConfirmar').style.opacity = '0.5';
+  document.getElementById('modalReasignarProveedor').style.display = 'flex';
+}
+
+function cerrarModalReasignar() {
+  document.getElementById('modalReasignarProveedor').style.display = 'none';
+  _proveedorABorrarId = null;
+}
+
+async function confirmarReasignacion() {
+  const idOrigen = _proveedorABorrarId;
+  const provOrigen = getProveedores().find(x => x.id === idOrigen);
+  if (!provOrigen) { cerrarModalReasignar(); return; }
+  const idDestino = document.getElementById('reasignarSelector').value;
+  const provDestino = getProveedores().find(x => x.id === idDestino);
+  if (!provDestino) { showToast('Selecciona un proveedor destino', 'error'); return; }
+
+  cerrarModalReasignar();
+
+  const facturasAfectadas = getStorage('hcarmen_facturas').filter(f =>
+    (f.proveedor||'').toLowerCase().trim() === provOrigen.razonSocial.toLowerCase().trim()
+  );
+  const total = facturasAfectadas.length;
+  let ok_count = 0;
+  let err_count = 0;
+
+  showLoading('Reasignando 0 de ' + total + '...');
+
+  // Actualizar localStorage primero
+  const todasF = getStorage('hcarmen_facturas').map(f => {
+    if ((f.proveedor||'').toLowerCase().trim() === provOrigen.razonSocial.toLowerCase().trim()) {
+      return { ...f, proveedor: provDestino.razonSocial, synced: false };
+    }
+    return f;
+  });
+  setStorage('hcarmen_facturas', todasF);
+
+  // Sincronizar cada factura reasignada con el Apps Script
+  for (let i = 0; i < facturasAfectadas.length; i++) {
+    showLoading('Actualizando ' + (i+1) + ' de ' + total + '...');
+    const f = facturasAfectadas[i];
+    const fActualizada = { ...f, proveedor: provDestino.razonSocial };
+    const ok = await syncData('addFactura', {
+      factura: {
+        fecha: fActualizada.fecha,
+        proveedor: fActualizada.proveedor,
+        tienda: nombreTienda(fActualizada.tienda),
+        importe: fActualizada.importeTotal,
+        tipo: fActualizada.tipo,
+        numeroFactura: fActualizada.numeroFactura || '',
+        notas: fActualizada.notas || '',
+        usuario: fActualizada.usuario || '',
+        syncId: fActualizada.syncId
+      }
+    });
+    if (ok) {
+      ok_count++;
+      setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x =>
+        x.id === f.id ? { ...x, synced: true } : x
+      ));
+    } else {
+      err_count++;
+    }
+  }
+
+  if (err_count > 0) {
+    hideLoading();
+    showToast(ok_count + ' actualizadas, ' + err_count + ' fallaron. Proveedor NO eliminado.', 'error');
+    return;
+  }
+
+  await _ejecutarBorradoProveedor(idOrigen, provOrigen.razonSocial);
+}
+
+async function _ejecutarBorradoProveedor(id, nombre) {
   setStorage('hcarmen_proveedores', getProveedores().filter(x => x.id !== id));
   await syncData('deleteProveedor', { id });
-  registrarLog('PROVEEDOR', 'Borrado: ' + p.razonSocial);
+  hideLoading();
+  registrarLog('PROVEEDOR', 'Borrado: ' + nombre);
   renderListaProveedores(document.getElementById('buscadorProveedores')?.value || '');
   showToast('Proveedor eliminado', 'ok');
+}
+
+// ── MODALES DE DUPLICADO ──
+
+let _dupFacturaResolver = null;
+
+function mostrarModalDuplicadoFactura(duplicados) {
+  return new Promise(resolve => {
+    _dupFacturaResolver = function(continuar) {
+      document.getElementById('modalDuplicadoFactura').style.display = 'none';
+      _dupFacturaResolver = null;
+      resolve(continuar);
+    };
+    const lista = document.getElementById('dupFacturaLista');
+    lista.innerHTML = duplicados.map(d => {
+      const doc = d.doc;
+      const tipoLabel = doc.tipo === 'albaran' ? 'Albarán' : doc.tipo === 'ticket' ? 'Ticket' : 'Factura';
+      return '<div style="background:var(--naranja-suave);border-radius:10px;padding:10px 12px;font-size:13px">' +
+        '<div style="font-weight:700;color:var(--naranja);margin-bottom:4px">⚠️ ' + d.motivo + '</div>' +
+        '<div><strong>' + tipoLabel + '</strong>' + (doc.numeroFactura ? ' N°' + doc.numeroFactura : '') + '</div>' +
+        '<div>Proveedor: ' + (doc.proveedor||'—') + '</div>' +
+        '<div>Fecha: ' + formatFecha(doc.fecha) + ' · Importe: ' + fmtEur(doc.importeTotal) + '</div>' +
+        (doc.notas ? '<div style="color:var(--gris)">Notas: ' + doc.notas + '</div>' : '') +
+      '</div>';
+    }).join('');
+    document.getElementById('modalDuplicadoFactura').style.display = 'flex';
+  });
+}
+
+let _dupGastoResolver = null;
+
+function mostrarModalDuplicadoGasto(dup) {
+  return new Promise(resolve => {
+    _dupGastoResolver = function(continuar) {
+      document.getElementById('modalDuplicadoGasto').style.display = 'none';
+      _dupGastoResolver = null;
+      resolve(continuar);
+    };
+    document.getElementById('dupGastoInfo').innerHTML =
+      '<div style="font-weight:700;margin-bottom:4px">Gasto existente:</div>' +
+      '<div>Fecha: ' + formatFecha(dup.fecha) + '</div>' +
+      '<div>Categoría: ' + (dup.categoria||'—') + '</div>' +
+      '<div>Concepto: ' + (dup.concepto||'—') + '</div>' +
+      '<div>Importe: <strong>' + fmtEur(dup.importe) + '</strong></div>';
+    document.getElementById('modalDuplicadoGasto').style.display = 'flex';
+  });
 }
 
 // ── GUARDAR FACTURA ──
@@ -2752,25 +2943,40 @@ async function guardarFactura() {
   if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
 
   const numeroFactura = document.getElementById('factNumeroFactura').value.trim();
+  const fecha = document.getElementById('factFecha').value;
 
-  // Comprobar duplicado por N° de factura + proveedor
+  // Comprobar duplicados (A: por N° referencia+proveedor; B: por fecha+proveedor+importe)
+  const todasFacturas = getStorage('hcarmen_facturas');
+  const duplicadosFactura = [];
+
   if (numeroFactura) {
-    const existente = getStorage('hcarmen_facturas').find(f =>
-      f.numeroFactura && f.numeroFactura.toLowerCase() === numeroFactura.toLowerCase() &&
-      f.proveedor.toLowerCase() === proveedor.toLowerCase()
+    const dupA = todasFacturas.find(f =>
+      f.numeroFactura && f.numeroFactura.toLowerCase().trim() === numeroFactura.toLowerCase() &&
+      (f.proveedor||'').toLowerCase().trim() === proveedor.toLowerCase()
     );
-    if (existente) {
-      const fecha = existente.fecha ? ' (registrada el ' + existente.fecha + ')' : '';
-      const continuar = confirm('⚠️ Ya existe una factura "' + numeroFactura + '" de ' + proveedor + fecha + '.\n¿Quieres guardarla igualmente?');
-      if (!continuar) return;
-    }
+    if (dupA) duplicadosFactura.push({ motivo: 'Mismo N° de referencia y proveedor', doc: dupA });
+  }
+
+  if (fecha && importe) {
+    const dupB = todasFacturas.find(f =>
+      f.fecha === fecha &&
+      (f.proveedor||'').toLowerCase().trim() === proveedor.toLowerCase() &&
+      Math.abs((f.importeTotal||0) - importe) <= 0.01 &&
+      !duplicadosFactura.find(d => d.doc.id === f.id)
+    );
+    if (dupB) duplicadosFactura.push({ motivo: 'Misma fecha, proveedor e importe', doc: dupB });
+  }
+
+  if (duplicadosFactura.length > 0) {
+    const continuar = await mostrarModalDuplicadoFactura(duplicadosFactura);
+    if (!continuar) return;
   }
 
   const syncId = getId();
   const factura = {
     id: syncId,
     syncId: syncId,
-    fecha: document.getElementById('factFecha').value,
+    fecha,
     proveedor,
     tipo: document.getElementById('factTipo').value,
     numeroFactura,
@@ -2905,6 +3111,19 @@ async function guardarGasto() {
   const importe = parseFloat(document.getElementById('gastoImporte').value);
   if (!concepto) { showToast('Indica el concepto', 'error'); return; }
   if (!importe || importe <= 0) { showToast('Indica el importe', 'error'); return; }
+
+  const fechaGasto = document.getElementById('gastoFecha').value;
+  const categoriaGasto = document.getElementById('gastoCat').value;
+
+  const dupG = getStorage('hcarmen_gastos').find(g =>
+    g.fecha === fechaGasto &&
+    (g.categoria||'') === categoriaGasto &&
+    Math.abs((g.importe||0) - importe) <= 0.01
+  );
+  if (dupG) {
+    const continuar = await mostrarModalDuplicadoGasto(dupG);
+    if (!continuar) return;
+  }
 
   const syncIdG = getId();
   const gasto = {
