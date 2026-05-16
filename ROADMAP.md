@@ -100,8 +100,16 @@
 - [x] Fix: `cargarDatosDesdeSheet()` mapea 'Ambas tiendas' a `'ambas'` (antes caía en `'tienda2'` por ternario binario)
 - [x] Fix: `resetFormGasto()` y `resetFormFactura()` limpian visualmente el botón Ambas al resetear el formulario
 
+### Apps Script — correcciones v6.1
+- [x] `addFactura` ya tenía upsert por `syncId` (sobreescribe fila si existe, inserta si no)
+- [x] `addFactura` guarda `numeroFactura` (col 7) y `usuario` (col 8) — antes se perdían
+- [x] `getFacturas` devuelve `numeroFactura` y `usuario` — ya disponibles al sincronizar
+- [x] `addGasto` guarda `usuario` (col 7) — antes se perdía
+- [x] `getGastos` devuelve `usuario`
+- [x] Prompt OCR ampliado: extrae `numeroFactura` además de proveedor, importe, tipo y fecha
+- [x] `max_tokens` del OCR subido de 256 a 300 para acomodar el campo extra
+
 ## Pendiente
 
-- [ ] Upsert en Apps Script por `syncId` para `addFactura` (necesario para que la reasignación de proveedor sobreescriba la fila existente en lugar de crear una nueva)
 - [ ] Desglose de artículos en líneas de factura (OCR línea a línea, no solo importe total)
 - [ ] Notificaciones / alertas de gastos por encima de umbral mensual configurable

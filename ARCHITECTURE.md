@@ -53,6 +53,47 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | `hcarmen_ventas` | Array de ventas diarias |
 | `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, tipo, numeroFactura, importeTotal, tienda, notas, usuario, synced) |
 | `hcarmen_gastos` | Array de gastos manuales (campos: syncId, fecha, concepto, categoria, importe, tienda, notas, usuario, synced) |
+
+## Schema de Google Sheets
+
+### Tab `Facturas` (9 columnas)
+
+| Col | Índice | Campo |
+|---|---|---|
+| A | 0 | fecha |
+| B | 1 | proveedor |
+| C | 2 | tienda |
+| D | 3 | importe |
+| E | 4 | tipo |
+| F | 5 | notas |
+| G | 6 | syncId |
+| H | 7 | numeroFactura |
+| I | 8 | usuario |
+
+### Tab `Ventas` (7 columnas)
+
+| Col | Índice | Campo |
+|---|---|---|
+| A | 0 | fecha |
+| B | 1 | tienda |
+| C | 2 | efectivo |
+| D | 3 | tarjeta |
+| E | 4 | total |
+| F | 5 | notas |
+| G | 6 | syncId |
+
+### Tab `Gastos_Manual` (8 columnas)
+
+| Col | Índice | Campo |
+|---|---|---|
+| A | 0 | fecha |
+| B | 1 | concepto |
+| C | 2 | tienda |
+| D | 3 | importe |
+| E | 4 | categoria |
+| F | 5 | notas |
+| G | 6 | syncId |
+| H | 7 | usuario |
 | `hcarmen_proveedores` | Array de proveedores (BD local) |
 | `hcarmen_session` | Sesión activa (usuario + expiración) |
 | `hcarmen_log` | Array de entradas de actividad (máx 300 locales; se sincroniza con Sheet tab Log) |
@@ -95,9 +136,9 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `getProveedores` | GET | Devuelve `{ proveedores: [...] }` |
 | `getApiUsage` | GET | Uso de Claude API por mes |
 | `testApi` | GET | Test de conectividad con Claude |
-| `addFactura` | GET/POST | Añade fila en tab Facturas — **pendiente**: hacer upsert por `syncId` (si existe la fila, sobreescribir) |
+| `addFactura` | GET/POST | Upsert por `syncId` en tab Facturas (sobreescribe si existe, inserta si no); guarda 9 cols incluyendo `numeroFactura` y `usuario` |
 | `addVenta` | GET/POST | Añade o actualiza fila en tab Ventas |
-| `addGasto` | GET/POST | Añade fila en tab Gastos_Manual |
+| `addGasto` | GET/POST | Añade fila en tab Gastos_Manual; guarda 8 cols incluyendo `usuario` |
 | `deleteRegistro` | GET/POST | Borra por syncId en Facturas/Ventas/Gastos |
 | `saveProveedor` | GET/POST | Crea o edita proveedor (flag `isEdit`) |
 | `deleteProveedor` | GET/POST | Borra proveedor por id |
