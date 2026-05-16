@@ -2018,7 +2018,7 @@
 <div class="screen" id="screen-calendario">
   <div class="header">
     <div class="header-top">
-      <button class="btn-back" onclick="navBack()">â†</button>
+      <button class="btn-back" onclick="navBack()">&larr;</button>
       <div>
         <div class="header-title">Calendario</div>
         <div class="header-subtitle">Ventas, facturas y gastos por fecha del documento</div>
@@ -2027,9 +2027,9 @@
   </div>
 
   <div class="calendar-toolbar">
-    <button class="mes-nav" onclick="cambiarCalendario(-1)">â—€</button>
+    <button class="mes-nav" onclick="cambiarCalendario(-1)">&lt;</button>
     <div class="calendar-title" id="calendarioTitulo"></div>
-    <button class="mes-nav" onclick="cambiarCalendario(1)">â–¶</button>
+    <button class="mes-nav" onclick="cambiarCalendario(1)">&gt;</button>
   </div>
   <div class="calendar-view-tabs">
     <button class="calendar-tab active" id="calTabMes" onclick="setCalendarioVista('mes')">Mensual</button>
@@ -3726,7 +3726,7 @@ function renderCalendarioSemana() {
     return `<div class="calendar-week-day">
       <div class="calendar-week-head">
         <div class="calendar-week-date">${d.toLocaleDateString('es-ES', {weekday:'long', day:'2-digit', month:'2-digit'})}</div>
-        <div class="calendar-week-total">${regs.length} registros Â· ${fmtEur(total)}</div>
+        <div class="calendar-week-total">${regs.length} registros &middot; ${fmtEur(total)}</div>
       </div>
       ${rows}
     </div>`;
