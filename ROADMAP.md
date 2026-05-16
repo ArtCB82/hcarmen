@@ -67,6 +67,13 @@
 - [x] Reasignación sincroniza cada factura al Apps Script secuencialmente (`addFactura` con `syncId` para upsert) con indicador de progreso
 - [x] Si alguna sincronización falla, se muestra el conteo de errores y el proveedor NO se elimina (consistencia)
 - [x] Si no hay facturas asociadas, flujo de borrado simple sin cambios
+- [x] Fix: documentos vinculados a proveedor por `proveedorId` estable y fallback por nombre para datos antiguos; al reasignar se actualizan `proveedor` y `proveedorId`
+
+### Historial y calendario
+- [x] Campo `createdAt` en facturas, ventas y gastos para registrar cuando se guardo cada registro
+- [x] Boton de vista calendario desde Historial
+- [x] Calendario mensual con marcas V/F/G para ventas, facturas y gastos por fecha del documento
+- [x] Vista semanal con detalle diario e importes
 
 ### Versión de la app
 - [x] Constante `APP_VERSION` en el JS del frontend

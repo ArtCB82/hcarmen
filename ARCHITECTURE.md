@@ -50,13 +50,29 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 
 | Clave | Contenido |
 |---|---|
-| `hcarmen_ventas` | Array de ventas diarias |
-| `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, tipo, numeroFactura, importeTotal, tienda, notas, usuario, synced) |
-| `hcarmen_gastos` | Array de gastos manuales (campos: syncId, fecha, concepto, categoria, importe, tienda, notas, usuario, synced) |
+| `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, proveedorId, tipo, numeroFactura, importeTotal, tienda, notas, usuario, createdAt, synced) |
+| `hcarmen_ventas` | Array de ventas diarias (campos: syncId, fecha, tienda, efectivo, tarjeta, total, notas, usuario, createdAt, synced) |
+| `hcarmen_gastos` | Array de gastos manuales (campos: syncId, fecha, concepto, categoria, importe, tienda, notas, usuario, createdAt, synced) |
+| `hcarmen_proveedores` | Array de proveedores (BD local) |
+| `hcarmen_session` | Sesion activa (usuario + expiracion) |
+| `hcarmen_log` | Array de entradas de actividad (max 300 locales; se sincroniza con Sheet tab Log) |
+| `hcarmen_api_usage` | Objeto `{ "YYYY-MM": N }` con contador de llamadas OCR por mes (local) |
+| `hcarmen_reparto_config` | Objeto con `diasSA`, `diasJdG` y `categorias` (criterio de reparto por categoria) |
+
+## Relacion entre documentos y proveedores
+
+Las facturas/albaranes se guardan con dos referencias:
+
+- `proveedor`: nombre visible del proveedor, usado por compatibilidad con los datos antiguos y con Sheets.
+- `proveedorId`: id estable del proveedor en `hcarmen_proveedores`, usado para reasignar y contar documentos sin depender solo del texto.
+
+Los registros antiguos que no tengan `proveedorId` siguen resolviendose por coincidencia normalizada de nombre (`proveedor` vs `razonSocial`). Al eliminar un proveedor, la app reasigna todas las facturas que coincidan por `proveedorId` o por nombre, y actualiza ambos campos (`proveedor` y `proveedorId`) antes de borrar el proveedor.
+
+`createdAt` registra cuando se guardo el registro en la app. La fecha `fecha` sigue siendo la fecha del documento, venta o gasto, y es la que se usa para resumenes y calendario.
 
 ## Schema de Google Sheets
 
-### Tab `Facturas` (9 columnas)
+### Tab `Facturas` (9 columnas + recomendadas)
 
 | Col | Índice | Campo |
 |---|---|---|
@@ -69,8 +85,10 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | G | 6 | syncId |
 | H | 7 | numeroFactura |
 | I | 8 | usuario |
+| J | 9 | proveedorId (recomendado) |
+| K | 10 | createdAt (recomendado) |
 
-### Tab `Ventas` (7 columnas)
+### Tab `Ventas` (7 columnas + recomendadas)
 
 | Col | Índice | Campo |
 |---|---|---|
@@ -81,8 +99,10 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | E | 4 | total |
 | F | 5 | notas |
 | G | 6 | syncId |
+| H | 7 | usuario (recomendado) |
+| I | 8 | createdAt (recomendado) |
 
-### Tab `Gastos_Manual` (8 columnas)
+### Tab `Gastos_Manual` (8 columnas + recomendadas)
 
 | Col | Índice | Campo |
 |---|---|---|
@@ -94,11 +114,7 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | F | 5 | notas |
 | G | 6 | syncId |
 | H | 7 | usuario |
-| `hcarmen_proveedores` | Array de proveedores (BD local) |
-| `hcarmen_session` | Sesión activa (usuario + expiración) |
-| `hcarmen_log` | Array de entradas de actividad (máx 300 locales; se sincroniza con Sheet tab Log) |
-| `hcarmen_api_usage` | Objeto `{ "YYYY-MM": N }` con contador de llamadas OCR por mes (local) |
-| `hcarmen_reparto_config` | Objeto con `diasSA`, `diasJdG` y `categorias` (criterio de reparto por categoría) |
+| I | 8 | createdAt (recomendado) |
 
 ## Comunicación con el backend
 
@@ -136,9 +152,9 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `getProveedores` | GET | Devuelve `{ proveedores: [...] }` |
 | `getApiUsage` | GET | Uso de Claude API por mes |
 | `testApi` | GET | Test de conectividad con Claude |
-| `addFactura` | GET/POST | Upsert por `syncId` en tab Facturas (sobreescribe si existe, inserta si no); guarda 9 cols incluyendo `numeroFactura` y `usuario` |
-| `addVenta` | GET/POST | Añade o actualiza fila en tab Ventas |
-| `addGasto` | GET/POST | Añade fila en tab Gastos_Manual; guarda 8 cols incluyendo `usuario` |
+| `addFactura` | GET/POST | Upsert por `syncId` en tab Facturas (sobreescribe si existe, inserta si no); el frontend envia tambien `proveedorId` y `createdAt` |
+| `addVenta` | GET/POST | Añade o actualiza fila en tab Ventas; el frontend envia `usuario` y `createdAt` |
+| `addGasto` | GET/POST | Añade fila en tab Gastos_Manual; el frontend envia `usuario` y `createdAt` |
 | `deleteRegistro` | GET/POST | Borra por syncId en Facturas/Ventas/Gastos |
 | `saveProveedor` | GET/POST | Crea o edita proveedor (flag `isEdit`) |
 | `deleteProveedor` | GET/POST | Borra proveedor por id |
@@ -189,6 +205,7 @@ La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del
 
 | Versión | Cambios principales |
 |---|---|
+| v1.7.0 | `proveedorId` estable en documentos, `createdAt` en registros e historial con vista calendario mensual/semanal |
 | v1.6.0 | Detección de duplicados en facturas (×2 comprobaciones) y gastos; reasignación de docs al borrar proveedor |
 | v1.5.x | Reparto de gastos comunes entre tiendas; configuración de reparto en panel admin |
 | v1.4.x | Bottom sheet de detalle de proveedor; botones Editar/Borrar con stopPropagation |

@@ -465,6 +465,145 @@
   .item-importe.gasto { color: var(--rojo); }
   .item-synced { font-size: 10px; color: var(--verde-claro); }
 
+  .historial-actions {
+    padding: 12px 20px 0;
+  }
+  .btn-calendar {
+    width: 100%;
+    background: var(--blanco);
+    border: 2px solid var(--verde-suave);
+    color: var(--verde);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-family: 'Lato', sans-serif;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: var(--sombra);
+  }
+  .calendar-toolbar {
+    padding: 16px 20px 8px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .calendar-title {
+    text-align: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .calendar-view-tabs {
+    padding: 0 20px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .calendar-tab {
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 10px;
+    color: var(--gris);
+    font-family: 'Lato', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .calendar-tab.active {
+    background: var(--verde);
+    border-color: var(--verde);
+    color: white;
+  }
+  .calendar-grid {
+    padding: 0 20px 20px;
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .calendar-weekday {
+    color: var(--gris);
+    font-size: 11px;
+    font-weight: 800;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .calendar-day {
+    min-height: 74px;
+    background: var(--blanco);
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  }
+  .calendar-day.muted { opacity: 0.35; }
+  .calendar-day.today { border-color: var(--verde); }
+  .calendar-day-num {
+    font-size: 12px;
+    font-weight: 900;
+    color: var(--texto);
+  }
+  .calendar-marks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+  }
+  .cal-mark {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: 900;
+  }
+  .cal-mark.venta { background: var(--verde); }
+  .cal-mark.factura { background: var(--naranja); }
+  .cal-mark.gasto { background: var(--rojo); }
+  .calendar-week-list {
+    padding: 0 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .calendar-week-day {
+    background: var(--blanco);
+    border-radius: var(--radio);
+    padding: 14px 16px;
+    box-shadow: var(--sombra);
+  }
+  .calendar-week-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+    margin-bottom: 10px;
+  }
+  .calendar-week-date {
+    font-weight: 900;
+    color: var(--texto);
+  }
+  .calendar-week-total {
+    color: var(--gris);
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .calendar-detail-row {
+    display: grid;
+    grid-template-columns: 22px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+    padding: 7px 0;
+    border-top: 1px solid var(--gris-claro);
+  }
+
   /* ── RESUMEN ── */
   .resumen-mes-selector {
     padding: 16px 20px 0;
@@ -1860,6 +1999,10 @@
     </div>
   </div>
 
+  <div class="historial-actions">
+    <button class="btn-calendar" onclick="navTo('screen-calendario')">Vista calendario</button>
+  </div>
+
   <div class="historial-filtros">
     <button class="filtro-btn active" onclick="filtrarHistorial('todo', this)">Todo</button>
     <button class="filtro-btn" onclick="filtrarHistorial('venta', this)">Ventas</button>
@@ -1870,6 +2013,29 @@
   </div>
 
   <div class="lista-items" id="historialLista"></div>
+</div>
+
+<div class="screen" id="screen-calendario">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">â†</button>
+      <div>
+        <div class="header-title">Calendario</div>
+        <div class="header-subtitle">Ventas, facturas y gastos por fecha del documento</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="calendar-toolbar">
+    <button class="mes-nav" onclick="cambiarCalendario(-1)">â—€</button>
+    <div class="calendar-title" id="calendarioTitulo"></div>
+    <button class="mes-nav" onclick="cambiarCalendario(1)">â–¶</button>
+  </div>
+  <div class="calendar-view-tabs">
+    <button class="calendar-tab active" id="calTabMes" onclick="setCalendarioVista('mes')">Mensual</button>
+    <button class="calendar-tab" id="calTabSemana" onclick="setCalendarioVista('semana')">Semanal</button>
+  </div>
+  <div id="calendarioContenido"></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -2035,7 +2201,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.6.0';
+const APP_VERSION = 'v1.7.0';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 
 // ── ESTADO ──
@@ -2128,6 +2294,7 @@ window.addEventListener('popstate', function(e) {
 
 function onScreenEnter(id) {
   if (id === 'screen-historial') renderHistorial('todo');
+  if (id === 'screen-calendario') renderCalendario();
   if (id === 'screen-resumen') renderResumen();
   if (id === 'screen-proveedores') renderProveedores();
   if (id === 'screen-factura') { setFechaHoy('factFecha'); tiendaFact = null; }
@@ -2637,6 +2804,10 @@ function getId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2,5);
 }
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
 function getStorage(key) {
   try { return JSON.parse(localStorage.getItem(key)) || []; }
   catch { return []; }
@@ -2651,6 +2822,22 @@ let proveedorSeleccionado = null;
 function getProveedores() {
   try { return JSON.parse(localStorage.getItem('hcarmen_proveedores')) || []; }
   catch { return []; }
+}
+
+function normalizarTexto(v) {
+  return String(v || '').toLowerCase().trim();
+}
+
+function proveedorCoincideFactura(f, proveedor) {
+  if (!f || !proveedor) return false;
+  if (f.proveedorId && proveedor.id && f.proveedorId === proveedor.id) return true;
+  return normalizarTexto(f.proveedor) === normalizarTexto(proveedor.razonSocial);
+}
+
+function resolverProveedorParaFactura(nombre) {
+  const buscado = normalizarTexto(nombre);
+  if (!buscado) return null;
+  return getProveedores().find(p => normalizarTexto(p.razonSocial) === buscado) || null;
 }
 
 function seleccionarProveedor(id) {
@@ -2765,7 +2952,7 @@ function renderListaProveedores(filtro) {
   }
   lista.innerHTML = provs.map(p => {
     const safeNombre = p.razonSocial.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    const nDocs = getStorage('hcarmen_facturas').filter(f => (f.proveedor||'').toLowerCase() === p.razonSocial.toLowerCase()).length;
+    const nDocs = getStorage('hcarmen_facturas').filter(f => proveedorCoincideFactura(f, p)).length;
     return '<div class="item-card" onclick="verDetalleProveedor(\'' + safeNombre + '\')" style="cursor:pointer">' +
       '<div class="item-tipo-dot factura">🏢</div>' +
       '<div class="item-info">' +
@@ -2790,9 +2977,7 @@ let _proveedorABorrarId = null;
 async function borrarProveedor(id) {
   const p = getProveedores().find(x => x.id === id);
   if (!p) return;
-  const facturasAsociadas = getStorage('hcarmen_facturas').filter(f =>
-    (f.proveedor||'').toLowerCase().trim() === p.razonSocial.toLowerCase().trim()
-  );
+  const facturasAsociadas = getStorage('hcarmen_facturas').filter(f => proveedorCoincideFactura(f, p));
   if (facturasAsociadas.length === 0) {
     if (!confirm('¿Borrar el proveedor "' + p.razonSocial + '"?')) return;
     await _ejecutarBorradoProveedor(id, p.razonSocial);
@@ -2829,47 +3014,35 @@ async function confirmarReasignacion() {
 
   cerrarModalReasignar();
 
-  const facturasAfectadas = getStorage('hcarmen_facturas').filter(f =>
-    (f.proveedor||'').toLowerCase().trim() === provOrigen.razonSocial.toLowerCase().trim()
-  );
+  const facturasAfectadas = getStorage('hcarmen_facturas').filter(f => proveedorCoincideFactura(f, provOrigen));
   const total = facturasAfectadas.length;
   let ok_count = 0;
   let err_count = 0;
 
   showLoading('Reasignando 0 de ' + total + '...');
 
-  // Actualizar localStorage primero
-  const todasF = getStorage('hcarmen_facturas').map(f => {
-    if ((f.proveedor||'').toLowerCase().trim() === provOrigen.razonSocial.toLowerCase().trim()) {
-      return { ...f, proveedor: provDestino.razonSocial, synced: false };
-    }
-    return f;
-  });
-  setStorage('hcarmen_facturas', todasF);
-
-  // Sincronizar cada factura reasignada con el Apps Script
+  // Sincronizar cada factura reasignada con el Apps Script antes de consolidar localmente
   for (let i = 0; i < facturasAfectadas.length; i++) {
     showLoading('Actualizando ' + (i+1) + ' de ' + total + '...');
     const f = facturasAfectadas[i];
-    const fActualizada = { ...f, proveedor: provDestino.razonSocial };
+    const fActualizada = { ...f, proveedor: provDestino.razonSocial, proveedorId: provDestino.id };
     const ok = await syncData('addFactura', {
       factura: {
         fecha: fActualizada.fecha,
         proveedor: fActualizada.proveedor,
+        proveedorId: fActualizada.proveedorId,
         tienda: nombreTienda(fActualizada.tienda),
         importe: fActualizada.importeTotal,
         tipo: fActualizada.tipo,
         numeroFactura: fActualizada.numeroFactura || '',
         notas: fActualizada.notas || '',
         usuario: fActualizada.usuario || '',
-        syncId: fActualizada.syncId
+        syncId: fActualizada.syncId,
+        createdAt: fActualizada.createdAt || nowIso()
       }
     });
     if (ok) {
       ok_count++;
-      setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x =>
-        x.id === f.id ? { ...x, synced: true } : x
-      ));
     } else {
       err_count++;
     }
@@ -2880,6 +3053,14 @@ async function confirmarReasignacion() {
     showToast(ok_count + ' actualizadas, ' + err_count + ' fallaron. Proveedor NO eliminado.', 'error');
     return;
   }
+
+  const todasF = getStorage('hcarmen_facturas').map(f => {
+    if (proveedorCoincideFactura(f, provOrigen)) {
+      return { ...f, proveedor: provDestino.razonSocial, proveedorId: provDestino.id, synced: true };
+    }
+    return f;
+  });
+  setStorage('hcarmen_facturas', todasF);
 
   await _ejecutarBorradoProveedor(idOrigen, provOrigen.razonSocial);
 }
@@ -2978,17 +3159,20 @@ async function guardarFactura() {
   }
 
   const syncId = getId();
+  const proveedorBD = proveedorSeleccionado || resolverProveedorParaFactura(proveedor);
   const factura = {
     id: syncId,
     syncId: syncId,
     fecha,
     proveedor,
+    proveedorId: proveedorBD ? proveedorBD.id : '',
     tipo: document.getElementById('factTipo').value,
     numeroFactura,
     importeTotal: importe,
     tienda: tiendaFact,
     notas: document.getElementById('factNotas').value.trim(),
     usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
+    createdAt: nowIso(),
     synced: false
   };
 
@@ -3016,8 +3200,10 @@ async function guardarFactura() {
       syncData('addFactura', {factura: {
         fecha: factura.fecha, proveedor: factura.proveedor,
         tienda: nombreTienda(factura.tienda), importe: factura.importeTotal,
+        proveedorId: factura.proveedorId,
         tipo: factura.tipo, numeroFactura: factura.numeroFactura,
-        notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId
+        notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId,
+        createdAt: factura.createdAt
       }}).then(ok => {
         if (ok) setStorage('hcarmen_facturas',
           getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
@@ -3037,11 +3223,13 @@ async function guardarFactura() {
     proveedor: factura.proveedor,
     tienda: nombreTienda(factura.tienda),
     importe: factura.importeTotal,
+    proveedorId: factura.proveedorId,
     tipo: factura.tipo,
     numeroFactura: factura.numeroFactura,
     notas: factura.notas,
     usuario: factura.usuario,
-    syncId: factura.syncId
+    syncId: factura.syncId,
+    createdAt: factura.createdAt
   }});
   if (ok) {
     setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
@@ -3080,6 +3268,7 @@ async function guardarVenta() {
     tickets: tickets,
     notas: document.getElementById('ventaNotas').value.trim(),
     usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
+    createdAt: nowIso(),
     synced: false
   };
 
@@ -3096,7 +3285,8 @@ async function guardarVenta() {
     total: venta.total,
     notas: venta.notas,
     usuario: venta.usuario,
-    syncId: venta.syncId
+    syncId: venta.syncId,
+    createdAt: venta.createdAt
   }});
   if (ok) {
     setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(v => v.id===venta.id ? {...v, synced:true} : v));
@@ -3141,6 +3331,7 @@ async function guardarGasto() {
     categoria: document.getElementById('gastoCat').value,
     notas: document.getElementById('gastoNotas').value.trim(),
     usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
+    createdAt: nowIso(),
     synced: false
   };
 
@@ -3157,7 +3348,8 @@ async function guardarGasto() {
     categoria: gasto.categoria,
     notas: gasto.notas,
     usuario: gasto.usuario,
-    syncId: gasto.syncId
+    syncId: gasto.syncId,
+    createdAt: gasto.createdAt
   }});
   if (ok) {
     setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(g => g.id===gasto.id ? {...g, synced:true} : g));
@@ -3200,16 +3392,22 @@ async function cargarDatosDesdeSheet() {
     const pendientesF = getStorage('hcarmen_facturas').filter(f => !f.synced);
     const pendientesV = getStorage('hcarmen_ventas').filter(v => !v.synced);
     const pendientesG = getStorage('hcarmen_gastos').filter(g => !g.synced);
+    const localesFById = new Map(getStorage('hcarmen_facturas').map(f => [f.syncId, f]));
+    const localesVById = new Map(getStorage('hcarmen_ventas').map(v => [v.syncId, v]));
+    const localesGById = new Map(getStorage('hcarmen_gastos').map(g => [g.syncId, g]));
 
     // Reemplazar completamente con datos del Sheet + pendientes locales
     if (Array.isArray(data.facturas)) {
       const delSheet = data.facturas.filter(f => f.syncId).map(f => ({
         id: f.syncId, syncId: f.syncId,
         fecha: parseFecha(f.fecha), proveedor: f.proveedor || '',
+        proveedorId: f.proveedorId || f.proveedor_id || (localesFById.get(f.syncId)||{}).proveedorId || '',
         tipo: f.tipo || 'factura', importeTotal: parseFloat(f.importe) || 0,
         tienda: f.tienda === 'Tienda San Asturio' ? 'tienda1' : f.tienda === 'Tienda Juan de Guzmán' ? 'tienda2' : 'ambas',
         notas: f.notas || '', usuario: f.usuario || '',
-        numeroFactura: f.numeroFactura || '', synced: true
+        numeroFactura: f.numeroFactura || '',
+        createdAt: f.createdAt || f.created_at || f.fechaCreacion || (localesFById.get(f.syncId)||{}).createdAt || '',
+        synced: true
       }));
       const sheetIds = new Set(delSheet.map(f => f.syncId));
       setStorage('hcarmen_facturas', [...delSheet, ...pendientesF.filter(f => !sheetIds.has(f.syncId))]);
@@ -3219,7 +3417,9 @@ async function cargarDatosDesdeSheet() {
         id: v.syncId, syncId: v.syncId, fecha: parseFecha(v.fecha),
         tienda: v.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',  // ventas no tienen 'ambas'
         efectivo: parseFloat(v.efectivo)||0, tarjeta: parseFloat(v.tarjeta)||0,
-        total: parseFloat(v.total)||0, notas: v.notas||'', synced: true
+        total: parseFloat(v.total)||0, notas: v.notas||'', usuario: v.usuario || (localesVById.get(v.syncId)||{}).usuario || '',
+        createdAt: v.createdAt || v.created_at || v.fechaCreacion || (localesVById.get(v.syncId)||{}).createdAt || '',
+        synced: true
       }));
       const sheetIds = new Set(delSheet.map(v => v.syncId));
       setStorage('hcarmen_ventas', [...delSheet, ...pendientesV.filter(v => !sheetIds.has(v.syncId))]);
@@ -3230,7 +3430,9 @@ async function cargarDatosDesdeSheet() {
         concepto: g.concepto||'',
         tienda: g.tienda === 'Tienda San Asturio' ? 'tienda1' : g.tienda === 'Tienda Juan de Guzmán' ? 'tienda2' : 'ambas',
         importe: parseFloat(g.importe)||0, categoria: g.categoria||'Otros',
-        notas: g.notas||'', synced: true
+        notas: g.notas||'', usuario: g.usuario || (localesGById.get(g.syncId)||{}).usuario || '',
+        createdAt: g.createdAt || g.created_at || g.fechaCreacion || (localesGById.get(g.syncId)||{}).createdAt || '',
+        synced: true
       }));
       const sheetIds = new Set(delSheet.map(g => g.syncId));
       setStorage('hcarmen_gastos', [...delSheet, ...pendientesG.filter(g => !sheetIds.has(g.syncId))]);
@@ -3280,8 +3482,10 @@ async function reintentarPendientes() {
   for (const f of facturas) {
     const ok = await syncData('addFactura', {factura: {
       fecha: f.fecha, proveedor: f.proveedor, tienda: nombreTienda(f.tienda),
-      importe: f.importeTotal, tipo: f.tipo, numeroFactura: f.numeroFactura || '',
-      notas: f.notas, usuario: f.usuario || '', syncId: f.syncId
+      importe: f.importeTotal, proveedorId: f.proveedorId || '',
+      tipo: f.tipo, numeroFactura: f.numeroFactura || '',
+      notas: f.notas, usuario: f.usuario || '', syncId: f.syncId,
+      createdAt: f.createdAt || nowIso()
     }});
     if (ok) setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x => x.id===f.id ? {...x, synced:true} : x));
   }
@@ -3289,7 +3493,8 @@ async function reintentarPendientes() {
     const ok = await syncData('addVenta', {venta: {
       fecha: v.fecha, tienda: nombreTienda(v.tienda),
       efectivo: v.efectivo, tarjeta: v.tarjeta, total: v.total, notas: v.notas,
-      usuario: v.usuario || '', syncId: v.syncId
+      usuario: v.usuario || '', syncId: v.syncId,
+      createdAt: v.createdAt || nowIso()
     }});
     if (ok) setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').map(x => x.id===v.id ? {...x, synced:true} : x));
   }
@@ -3297,7 +3502,8 @@ async function reintentarPendientes() {
     const ok = await syncData('addGasto', {gasto: {
       fecha: g.fecha, concepto: g.concepto, tienda: nombreTienda(g.tienda),
       importe: g.importe, categoria: g.categoria, notas: g.notas,
-      usuario: g.usuario || '', syncId: g.syncId
+      usuario: g.usuario || '', syncId: g.syncId,
+      createdAt: g.createdAt || nowIso()
     }});
     if (ok) setStorage('hcarmen_gastos', getStorage('hcarmen_gastos').map(x => x.id===g.id ? {...x, synced:true} : x));
   }
@@ -3377,6 +3583,7 @@ function renderHistorial(filtro) {
           <span class="item-tienda-tag">${tiendaTag}</span>
         </div>
         ${item.usuario ? `<div style="color:var(--gris);font-size:11px">👤 ${item.usuario}</div>` : ''}
+        ${item.createdAt ? `<div style="color:var(--gris);font-size:11px">Guardado: ${new Date(item.createdAt).toLocaleString('es-ES')}</div>` : ''}
         <div class="item-synced">${syncIcon} ${item.synced ? 'Sincronizado' : 'Pendiente'}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
@@ -3417,6 +3624,113 @@ function filtrarHistorial(filtro, btn) {
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderHistorial(filtro);
+}
+
+let calendarioFecha = new Date();
+let calendarioVista = 'mes';
+
+function dateKey(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function addDays(d, n) {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  x.setDate(x.getDate() + n);
+  return x;
+}
+
+function inicioSemana(d) {
+  const diff = (d.getDay() + 6) % 7;
+  return addDays(d, -diff);
+}
+
+function registrosCalendario() {
+  const facturas = getStorage('hcarmen_facturas').map(f => ({
+    fecha: f.fecha, tipo: 'factura', titulo: f.proveedor || 'Factura', importe: f.importeTotal || 0
+  }));
+  const ventas = getStorage('hcarmen_ventas').map(v => ({
+    fecha: v.fecha, tipo: 'venta', titulo: nombreTienda(v.tienda), importe: v.total || 0
+  }));
+  const gastos = getStorage('hcarmen_gastos').map(g => ({
+    fecha: g.fecha, tipo: 'gasto', titulo: g.concepto || 'Gasto', importe: g.importe || 0
+  }));
+  return [...facturas, ...ventas, ...gastos].filter(x => x.fecha);
+}
+
+function resumenDia(fecha) {
+  const registros = registrosCalendario().filter(x => x.fecha === fecha);
+  return {
+    registros,
+    venta: registros.filter(x => x.tipo === 'venta').length,
+    factura: registros.filter(x => x.tipo === 'factura').length,
+    gasto: registros.filter(x => x.tipo === 'gasto').length
+  };
+}
+
+function setCalendarioVista(vista) {
+  calendarioVista = vista;
+  renderCalendario();
+}
+
+function cambiarCalendario(delta) {
+  if (calendarioVista === 'semana') calendarioFecha = addDays(calendarioFecha, delta * 7);
+  else calendarioFecha = new Date(calendarioFecha.getFullYear(), calendarioFecha.getMonth() + delta, 1);
+  renderCalendario();
+}
+
+function renderCalendario() {
+  const titulo = document.getElementById('calendarioTitulo');
+  const cont = document.getElementById('calendarioContenido');
+  if (!titulo || !cont) return;
+  document.getElementById('calTabMes').classList.toggle('active', calendarioVista === 'mes');
+  document.getElementById('calTabSemana').classList.toggle('active', calendarioVista === 'semana');
+  if (calendarioVista === 'semana') { renderCalendarioSemana(); return; }
+
+  const y = calendarioFecha.getFullYear();
+  const m = calendarioFecha.getMonth();
+  titulo.textContent = `${MESES[m]} ${y}`;
+  const inicio = inicioSemana(new Date(y, m, 1));
+  const hoyKey = dateKey(new Date());
+  const labels = ['L','M','X','J','V','S','D'].map(x => `<div class="calendar-weekday">${x}</div>`).join('');
+  const celdas = Array.from({length: 42}, (_, i) => addDays(inicio, i)).map(d => {
+    const key = dateKey(d);
+    const r = resumenDia(key);
+    const marks = [
+      r.venta ? `<span class="cal-mark venta">V</span>` : '',
+      r.factura ? `<span class="cal-mark factura">F</span>` : '',
+      r.gasto ? `<span class="cal-mark gasto">G</span>` : ''
+    ].join('');
+    return `<div class="calendar-day ${d.getMonth() !== m ? 'muted' : ''} ${key === hoyKey ? 'today' : ''}">
+      <div class="calendar-day-num">${d.getDate()}</div>
+      <div class="calendar-marks">${marks}</div>
+    </div>`;
+  }).join('');
+  cont.innerHTML = `<div class="calendar-grid">${labels}${celdas}</div>`;
+}
+
+function renderCalendarioSemana() {
+  const inicio = inicioSemana(calendarioFecha);
+  const fin = addDays(inicio, 6);
+  document.getElementById('calendarioTitulo').textContent = `${formatFecha(dateKey(inicio))} - ${formatFecha(dateKey(fin))}`;
+  const tipoIcono = { venta:'V', factura:'F', gasto:'G' };
+  const dias = Array.from({length: 7}, (_, i) => addDays(inicio, i));
+  document.getElementById('calendarioContenido').innerHTML = `<div class="calendar-week-list">` + dias.map(d => {
+    const key = dateKey(d);
+    const regs = resumenDia(key).registros.sort((a,b) => a.tipo.localeCompare(b.tipo));
+    const total = regs.reduce((s, x) => s + (x.importe || 0), 0);
+    const rows = regs.length ? regs.map(x => `<div class="calendar-detail-row">
+      <span class="cal-mark ${x.tipo}">${tipoIcono[x.tipo]}</span>
+      <span>${x.titulo}</span>
+      <strong>${fmtEur(x.importe)}</strong>
+    </div>`).join('') : `<div style="font-size:13px;color:var(--gris);padding-top:2px">Sin registros</div>`;
+    return `<div class="calendar-week-day">
+      <div class="calendar-week-head">
+        <div class="calendar-week-date">${d.toLocaleDateString('es-ES', {weekday:'long', day:'2-digit', month:'2-digit'})}</div>
+        <div class="calendar-week-total">${regs.length} registros Â· ${fmtEur(total)}</div>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('') + `</div>`;
 }
 
 // ── RESUMEN MENSUAL ──
@@ -3633,7 +3947,8 @@ function renderProveedores() {
 
   const byProv = {};
   facturas.forEach(f => {
-    const p = f.proveedor || 'Sin nombre';
+    const provBD = f.proveedorId ? getProveedores().find(p => p.id === f.proveedorId) : resolverProveedorParaFactura(f.proveedor);
+    const p = provBD ? provBD.razonSocial : (f.proveedor || 'Sin nombre');
     if (!byProv[p]) byProv[p] = {total:0, count:0};
     byProv[p].total += f.importeTotal;
     byProv[p].count++;
@@ -3665,7 +3980,7 @@ function renderProveedores() {
 function verDetalleProveedor(nombre, filtroMes) {
   const provBD = getProveedores().find(p => p.razonSocial === nombre);
   const todasFacturas = getStorage('hcarmen_facturas')
-    .filter(f => (f.proveedor || '').toLowerCase() === nombre.toLowerCase())
+    .filter(f => provBD ? proveedorCoincideFactura(f, provBD) : normalizarTexto(f.proveedor) === normalizarTexto(nombre))
     .sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
 
   // Si viene con filtro de mes (desde pantalla Compras), mostrar solo ese mes
