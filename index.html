@@ -3158,8 +3158,8 @@ async function _guardarFactura() {
 
   if (numeroFactura) {
     const dupA = todasFacturas.find(f =>
-      f.numeroFactura && f.numeroFactura.toLowerCase().trim() === numeroFactura.toLowerCase() &&
-      (f.proveedor||'').toLowerCase().trim() === proveedor.toLowerCase()
+      f.numeroFactura && normalizarTexto(f.numeroFactura) === normalizarTexto(numeroFactura) &&
+      normalizarTexto(f.proveedor) === normalizarTexto(proveedor)
     );
     if (dupA) duplicadosFactura.push({ motivo: 'Mismo N° de referencia y proveedor', doc: dupA });
   }
@@ -3167,7 +3167,7 @@ async function _guardarFactura() {
   if (fecha && importe) {
     const dupB = todasFacturas.find(f =>
       f.fecha === fecha &&
-      (f.proveedor||'').toLowerCase().trim() === proveedor.toLowerCase() &&
+      normalizarTexto(f.proveedor) === normalizarTexto(proveedor) &&
       Math.abs((f.importeTotal||0) - importe) <= 0.01 &&
       !duplicadosFactura.find(d => facturaKey(d.doc) === facturaKey(f))
     );
