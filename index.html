@@ -1376,8 +1376,8 @@
     </div>
 
     <div class="camera-controls">
-      <button class="btn-cam" id="btnGaleria" onclick="abrirGaleria()">🖼 Galería / PDF</button>
-      <button class="btn-cam primary" id="btnCamara" onclick="toggleCamara()">📷 Abrir Cámara</button>
+      <button class="btn-cam" id="btnGaleria" onclick="setOcrContext('factura');abrirGaleria()">Galería / PDF</button>
+      <button class="btn-cam primary" id="btnCamara" onclick="setOcrContext('factura');toggleCamara()">Abrir Cámara</button>
     </div>
     <input type="file" id="fileInput" accept="image/*,.pdf" multiple style="display:none" onchange="cargarImagen(event)">
     <div id="multiImageThumbs" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 8px;"></div>
@@ -1575,6 +1575,31 @@
   </div>
 
   <div class="scroll-content">
+    <div class="camera-area" id="gastoCameraArea">
+      <video id="gastoCameraVideo" playsinline autoplay muted></video>
+      <img id="gastoPhotoPreview" alt="Foto capturada">
+      <div class="camera-overlay" id="gastoCameraOverlay">
+        <div class="cam-icon">&#128247;</div>
+        <div>Pulsa <strong>"Abrir Cámara"</strong><br>para reconocer el gasto</div>
+      </div>
+    </div>
+
+    <div class="camera-controls">
+      <button class="btn-cam" id="gastoBtnGaleria" onclick="setOcrContext('gasto');abrirGaleria()">Galería / PDF</button>
+      <button class="btn-cam primary" id="gastoBtnCamara" onclick="setOcrContext('gasto');toggleCamara()">Abrir Cámara</button>
+    </div>
+    <input type="file" id="gastoFileInput" accept="image/*,.pdf" multiple style="display:none" onchange="setOcrContext('gasto');cargarImagen(event)">
+    <div id="gastoMultiImageThumbs" style="display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 8px;"></div>
+
+    <div id="gastoOcrResultDiv" style="display:none">
+      <div class="ocr-result">
+        <h4>Detectado automáticamente</h4>
+        <div class="ocr-field"><span>Concepto</span><span id="gastoOcrConcepto">—</span></div>
+        <div class="ocr-field"><span>Importe</span><span id="gastoOcrImporte">—</span></div>
+        <div class="ocr-field"><span>Fecha</span><span id="gastoOcrFecha">—</span></div>
+      </div>
+    </div>
+
     <div class="form-body">
       <div class="field-group">
         <div class="field-label">Tienda</div>
@@ -2201,7 +2226,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.7.0';
+const APP_VERSION = 'v1.8.0';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 
 // ── ESTADO ──
@@ -2211,6 +2236,7 @@ let tiendaGasto = null;
 let cameraStream = null;
 let fotoBase64 = null;
 let _paginasBase64 = [];
+let ocrContext = 'factura';
 let mesActual = new Date();
 let mesActualProv = new Date();
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -2297,9 +2323,9 @@ function onScreenEnter(id) {
   if (id === 'screen-calendario') renderCalendario();
   if (id === 'screen-resumen') renderResumen();
   if (id === 'screen-proveedores') renderProveedores();
-  if (id === 'screen-factura') { setFechaHoy('factFecha'); tiendaFact = null; resetTiendaBtns(''); }
+  if (id === 'screen-factura') { setOcrContext('factura'); setFechaHoy('factFecha'); tiendaFact = null; resetTiendaBtns(''); }
   if (id === 'screen-ventas') { setFechaHoy('ventaFecha'); tiendaVenta = null; calcTotal(); resetTiendaBtns('v'); }
-  if (id === 'screen-gasto') { setFechaHoy('gastoFecha'); tiendaGasto = null; resetTiendaBtns('g'); }
+  if (id === 'screen-gasto') { setOcrContext('gasto'); setFechaHoy('gastoFecha'); tiendaGasto = null; resetTiendaBtns('g'); }
 }
 
 // ── FECHA ──
@@ -2409,6 +2435,23 @@ function calcTotal() {
 }
 
 // ── CÁMARA ──
+function setOcrContext(ctx) {
+  ocrContext = ctx === 'gasto' ? 'gasto' : 'factura';
+}
+
+function getOcrEls() {
+  const isGasto = ocrContext === 'gasto';
+  return {
+    video: document.getElementById(isGasto ? 'gastoCameraVideo' : 'cameraVideo'),
+    preview: document.getElementById(isGasto ? 'gastoPhotoPreview' : 'photoPreview'),
+    overlay: document.getElementById(isGasto ? 'gastoCameraOverlay' : 'cameraOverlay'),
+    btnCamara: document.getElementById(isGasto ? 'gastoBtnCamara' : 'btnCamara'),
+    fileInput: document.getElementById(isGasto ? 'gastoFileInput' : 'fileInput'),
+    thumbs: document.getElementById(isGasto ? 'gastoMultiImageThumbs' : 'multiImageThumbs'),
+    result: document.getElementById(isGasto ? 'gastoOcrResultDiv' : 'ocrResultDiv')
+  };
+}
+
 async function toggleCamara() {
   if (cameraStream) {
     stopCamera();
@@ -2416,20 +2459,21 @@ async function toggleCamara() {
   }
   try {
     cameraStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
-    const video = document.getElementById('cameraVideo');
+    const els = getOcrEls();
+    const video = els.video;
     video.srcObject = cameraStream;
     video.style.display = 'block';
-    document.getElementById('photoPreview').style.display = 'none';
-    document.getElementById('cameraOverlay').style.display = 'none';
-    document.getElementById('btnCamara').textContent = '📸 Hacer Foto';
-    document.getElementById('btnCamara').onclick = hacerFoto;
+    els.preview.style.display = 'none';
+    els.overlay.style.display = 'none';
+    els.btnCamara.textContent = 'Hacer foto';
+    els.btnCamara.onclick = hacerFoto;
   } catch(e) {
     showToast('No se puede acceder a la cámara. Usa Galería.', 'error');
   }
 }
 
 function hacerFoto() {
-  const video = document.getElementById('cameraVideo');
+  const video = getOcrEls().video;
   const canvas = document.createElement('canvas');
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
@@ -2444,11 +2488,19 @@ function stopCamera() {
     cameraStream.getTracks().forEach(t => t.stop());
     cameraStream = null;
   }
-  document.getElementById('btnCamara').textContent = '📷 Abrir Cámara';
-  document.getElementById('btnCamara').onclick = toggleCamara;
+  ['factura','gasto'].forEach(ctx => {
+    const prev = ocrContext;
+    ocrContext = ctx;
+    const els = getOcrEls();
+    if (els.btnCamara) {
+      els.btnCamara.textContent = 'Abrir Cámara';
+      els.btnCamara.onclick = function() { setOcrContext(ctx); toggleCamara(); };
+    }
+    ocrContext = prev;
+  });
 }
 
-function abrirGaleria() { document.getElementById('fileInput').click(); }
+function abrirGaleria() { getOcrEls().fileInput.click(); }
 
 async function cargarImagen(e) {
   const files = Array.from(e.target.files);
@@ -2487,7 +2539,7 @@ async function cargarImagen(e) {
 }
 
 function mostrarMiniaturas(srcs) {
-  const container = document.getElementById('multiImageThumbs');
+  const container = getOcrEls().thumbs;
   if (!container) return;
   container.innerHTML = srcs.map((src, i) =>
     `<div style="position:relative">
@@ -2561,16 +2613,16 @@ async function procesarPDF(file) {
 
 async function mostrarFoto(src) {
   console.log('[OCR] Foto recibida, iniciando análisis...');
-  const preview = document.getElementById('photoPreview');
+  const contextAtStart = ocrContext;
+  const els = getOcrEls();
+  const preview = els.preview;
   preview.src = src;
   preview.style.display = 'block';
-  document.getElementById('cameraVideo').style.display = 'none';
-  document.getElementById('cameraOverlay').style.display = 'none';
+  els.video.style.display = 'none';
+  els.overlay.style.display = 'none';
 
-  document.getElementById('ocrResultDiv').style.display = 'block';
-  document.getElementById('ocrTipo').textContent = '⏳ Analizando...';
-  document.getElementById('ocrProveedor').textContent = '⏳ Analizando...';
-  document.getElementById('ocrImporte').textContent = '⏳';
+  els.result.style.display = 'block';
+  mostrarOcrAnalizando();
 
   try {
     const compressed = await comprimirImagen(src, 1600);
@@ -2604,6 +2656,7 @@ async function mostrarFoto(src) {
       const rData = await r.json();
       console.log('[OCR] Respuesta directa POST:', rData);
       if (rData.success && rData.datos) {
+        ocrContext = contextAtStart;
         rellenarDatosOCR(rData.datos);
         return;
       }
@@ -2632,6 +2685,7 @@ async function mostrarFoto(src) {
           const data = await res.json();
           console.log('[OCR] Resultado polling:', data);
           if (data.success && data.datos) {
+            ocrContext = contextAtStart;
             rellenarDatosOCR(data.datos);
             return;
           }
@@ -2642,9 +2696,11 @@ async function mostrarFoto(src) {
       }
     }
 
+    ocrContext = contextAtStart;
     mostrarOCRManual();
   } catch(e) {
     console.warn('[OCR] Error general:', e);
+    ocrContext = contextAtStart;
     mostrarOCRManual();
   }
 }
@@ -2758,7 +2814,48 @@ function cerrarModalCotejo(usarComoNuevo) {
 
 // ── RELLENAR DATOS OCR ──
 
+function mostrarOcrAnalizando() {
+  if (ocrContext === 'gasto') {
+    document.getElementById('gastoOcrConcepto').textContent = '⏳ Analizando...';
+    document.getElementById('gastoOcrImporte').textContent = '⏳';
+    document.getElementById('gastoOcrFecha').textContent = '⏳';
+    return;
+  }
+  document.getElementById('ocrTipo').textContent = '⏳ Analizando...';
+  document.getElementById('ocrProveedor').textContent = '⏳ Analizando...';
+  document.getElementById('ocrImporte').textContent = '⏳';
+}
+
+function inferirCategoriaGasto(texto) {
+  const t = normalizarTexto(texto);
+  if (/alquiler|renta|arrend/.test(t)) return 'Alquiler';
+  if (/gasolina|diesel|gasoil|combustible|parking|transporte|taxi|peaje/.test(t)) return 'Transporte/Gasolina';
+  if (/luz|agua|electric|iberdrola|endesa|naturgy|telefono|internet|suministro/.test(t)) return 'Suministros';
+  if (/nomina|salario|seguridad social|personal/.test(t)) return 'Personal';
+  if (/bolsa|material|papel|envase|limpieza|plastico|caja/.test(t)) return 'Material';
+  if (/repar|manten|averia|fontaner|electricista/.test(t)) return 'Reparaciones';
+  if (/impuesto|hacienda|iva|modelo|tasa|tribut/.test(t)) return 'Impuestos';
+  if (/gestor|asesor|contab|laboral/.test(t)) return 'Gestoría';
+  return 'Otros';
+}
+
+function rellenarDatosOCRGasto(datos) {
+  const concepto = datos.concepto || datos.proveedor || datos.tipo || '';
+  document.getElementById('gastoOcrConcepto').textContent = concepto || '—';
+  document.getElementById('gastoOcrImporte').textContent = datos.importe ? datos.importe + ' €' : '—';
+  document.getElementById('gastoOcrFecha').textContent = datos.fecha || '—';
+  if (concepto) document.getElementById('gastoConcepto').value = concepto;
+  if (datos.importe) document.getElementById('gastoImporte').value = datos.importe;
+  if (datos.fecha) document.getElementById('gastoFecha').value = datos.fecha;
+  if (concepto) document.getElementById('gastoCat').value = inferirCategoriaGasto(concepto);
+  showToast('Datos del gasto detectados. Revisa antes de guardar', 'ok');
+}
+
 function rellenarDatosOCR(datos) {
+  if (ocrContext === 'gasto') {
+    rellenarDatosOCRGasto(datos || {});
+    return;
+  }
   document.getElementById('ocrTipo').textContent = datos.tipo || '—';
   document.getElementById('ocrImporte').textContent = datos.importe ? datos.importe + ' €' : '—';
   document.getElementById('ocrNumeroFactura').textContent = datos.numeroFactura || datos.numero_factura || '—';
@@ -2796,6 +2893,12 @@ function rellenarDatosOCR(datos) {
 }
 
 function mostrarOCRManual() {
+  if (ocrContext === 'gasto') {
+    document.getElementById('gastoOcrConcepto').textContent = 'No se pudo detectar';
+    document.getElementById('gastoOcrImporte').textContent = '—';
+    document.getElementById('gastoOcrFecha').textContent = '—';
+    return;
+  }
   document.getElementById('ocrTipo').textContent = 'Rellena manualmente';
   document.getElementById('ocrProveedor').textContent = 'No se pudo detectar';
   document.getElementById('ocrImporte').textContent = '—';
@@ -4173,6 +4276,11 @@ function resetFormGasto() {
   document.getElementById('gastoNotas').value = '';
   document.getElementById('gastoFecha').value = '';
   document.getElementById('gastoCat').selectedIndex = 0;
+  document.getElementById('gastoOcrResultDiv').style.display = 'none';
+  document.getElementById('gastoPhotoPreview').style.display = 'none';
+  document.getElementById('gastoCameraOverlay').style.display = 'flex';
+  document.getElementById('gastoMultiImageThumbs').innerHTML = '';
+  document.getElementById('gastoFileInput').value = '';
   tiendaGasto = null;
   document.getElementById('gTiendaBtn1').classList.remove('selected');
   document.getElementById('gTiendaBtn2').classList.remove('selected');

@@ -205,6 +205,7 @@ La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del
 
 | Versión | Cambios principales |
 |---|---|
+| v1.8.0 | OCR tambien en Gastos Manuales con relleno de concepto, importe, fecha y categoria sugerida |
 | v1.7.0 | `proveedorId` estable en documentos, `createdAt` en registros e historial con vista calendario mensual/semanal |
 | v1.6.0 | Detección de duplicados en facturas (×2 comprobaciones) y gastos; reasignación de docs al borrar proveedor |
 | v1.5.x | Reparto de gastos comunes entre tiendas; configuración de reparto en panel admin |

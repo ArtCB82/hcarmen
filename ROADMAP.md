@@ -75,6 +75,11 @@
 - [x] Calendario mensual con marcas V/F/G para ventas, facturas y gastos por fecha del documento
 - [x] Vista semanal con detalle diario e importes
 
+### Gastos manuales — OCR
+- [x] Reconocimiento automatico de documentos en la pantalla de gastos
+- [x] Relleno automatico de concepto, importe y fecha desde OCR
+- [x] Sugerencia de categoria de gasto por palabras clave
+
 ### Versión de la app
 - [x] Constante `APP_VERSION` en el JS del frontend
 - [x] Badge de versión visible al final de la pantalla Home (texto pequeño, no intrusivo)
