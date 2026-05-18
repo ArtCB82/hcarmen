@@ -2297,7 +2297,7 @@ function onScreenEnter(id) {
   if (id === 'screen-calendario') renderCalendario();
   if (id === 'screen-resumen') renderResumen();
   if (id === 'screen-proveedores') renderProveedores();
-  if (id === 'screen-factura') { setFechaHoy('factFecha'); tiendaFact = null; }
+  if (id === 'screen-factura') { setFechaHoy('factFecha'); tiendaFact = null; resetTiendaBtns(''); }
   if (id === 'screen-ventas') { setFechaHoy('ventaFecha'); tiendaVenta = null; calcTotal(); resetTiendaBtns('v'); }
   if (id === 'screen-gasto') { setFechaHoy('gastoFecha'); tiendaGasto = null; resetTiendaBtns('g'); }
 }
@@ -2356,6 +2356,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 function resetTiendaBtns(prefix) {
   document.getElementById(prefix+'TiendaBtn1').classList.remove('selected');
   document.getElementById(prefix+'TiendaBtn2').classList.remove('selected');
+  const ambas = document.getElementById(prefix+'TiendaBtnAmbas');
+  if (ambas) ambas.classList.remove('selected');
 }
 
 function selTienda(t) {
@@ -2828,6 +2830,15 @@ function normalizarTexto(v) {
   return String(v || '').toLowerCase().trim();
 }
 
+function facturaKey(f) {
+  return String((f && (f.syncId || f.id)) || [
+    f && f.fecha,
+    f && f.proveedor,
+    f && f.numeroFactura,
+    f && (f.importeTotal || f.importe)
+  ].join('|'));
+}
+
 function proveedorCoincideFactura(f, proveedor) {
   if (!f || !proveedor) return false;
   if (f.proveedorId && proveedor.id && f.proveedorId === proveedor.id) return true;
@@ -3122,6 +3133,16 @@ function mostrarModalDuplicadoGasto(dup) {
 
 // ── GUARDAR FACTURA ──
 async function guardarFactura() {
+  try {
+    await _guardarFactura();
+  } catch (e) {
+    console.error('[FACTURA] Error al guardar:', e);
+    hideLoading();
+    showToast('Error al guardar factura: ' + (e && e.message ? e.message : e), 'error');
+  }
+}
+
+async function _guardarFactura() {
   if (!tiendaFact) { showToast('Selecciona una tienda', 'error'); return; }
   const proveedor = document.getElementById('factProveedor').value.trim();
   const importe = parseFloat(document.getElementById('factImporte').value);
@@ -3148,7 +3169,7 @@ async function guardarFactura() {
       f.fecha === fecha &&
       (f.proveedor||'').toLowerCase().trim() === proveedor.toLowerCase() &&
       Math.abs((f.importeTotal||0) - importe) <= 0.01 &&
-      !duplicadosFactura.find(d => d.doc.id === f.id)
+      !duplicadosFactura.find(d => facturaKey(d.doc) === facturaKey(f))
     );
     if (dupB) duplicadosFactura.push({ motivo: 'Misma fecha, proveedor e importe', doc: dupB });
   }
@@ -3179,7 +3200,7 @@ async function guardarFactura() {
   // Verificar si el proveedor existe en la BD — si no, ofrecer crearlo
   const provs = getProveedores();
   const provExiste = proveedorSeleccionado || provs.find(p =>
-    p.razonSocial.toLowerCase() === proveedor.toLowerCase()
+    normalizarTexto(p.razonSocial) === normalizarTexto(proveedor)
   );
   if (!provExiste) {
     const crear = confirm('El proveedor "' + proveedor + '" no está en tu base de datos. ¿Quieres añadirlo ahora?');
