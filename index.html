@@ -2288,7 +2288,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.10.0';
+const APP_VERSION = 'v1.10.1';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 const MODOS_FACTURACION = {
   revisar: 'Revisar manualmente',
@@ -2995,12 +2995,88 @@ function setStorage(key, data) {
 let proveedorSeleccionado = null;
 
 function getProveedores() {
-  try { return JSON.parse(localStorage.getItem('hcarmen_proveedores')) || []; }
+  try { return deduplicarProveedores(JSON.parse(localStorage.getItem('hcarmen_proveedores')) || []); }
   catch { return []; }
 }
 
 function normalizarTexto(v) {
   return String(v || '').toLowerCase().trim();
+}
+
+function normalizarClaveProveedor(v) {
+  return _normProv(v || '');
+}
+
+function normalizarCif(v) {
+  return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function proveedorNombreClave(p) {
+  return normalizarClaveProveedor(p && p.razonSocial);
+}
+
+function proveedoresEquivalentes(a, b) {
+  const cifA = normalizarCif(a && a.cif);
+  const cifB = normalizarCif(b && b.cif);
+  if (cifA && cifB) return cifA === cifB;
+  const nombreA = proveedorNombreClave(a);
+  const nombreB = proveedorNombreClave(b);
+  return Boolean(nombreA && nombreA === nombreB);
+}
+
+function proveedorScoreDatos(p) {
+  const campos = ['razonSocial','cif','telefono','email','web','direccion','contactoNombre','contactoTel','contactoEmail','iban','modoFacturacion','diasMaxFactura','toleranciaFactura','notas'];
+  return campos.reduce((n, k) => n + (p && p[k] ? 1 : 0), 0);
+}
+
+function fusionarProveedorDatos(base, extra) {
+  const out = { ...base };
+  ['razonSocial','cif','telefono','email','web','direccion','contactoNombre','contactoTel','contactoEmail','iban','modoFacturacion','diasMaxFactura','toleranciaFactura','notas'].forEach(k => {
+    if (!out[k] && extra && extra[k]) out[k] = extra[k];
+  });
+  out.synced = Boolean(base.synced && (!extra || extra.synced));
+  return out;
+}
+
+function deduplicarProveedores(lista, opts) {
+  const opciones = opts || {};
+  const dedupe = [];
+  const idCanonico = new Map();
+  (lista || []).forEach(p => {
+    if (!p || !p.id || !proveedorNombreClave(p)) return;
+    const idx = dedupe.findIndex(actual => proveedoresEquivalentes(actual, p));
+    if (idx === -1) {
+      dedupe.push({ ...p });
+      idCanonico.set(p.id, p.id);
+      return;
+    }
+    const actual = dedupe[idx];
+    const preferirNuevo = proveedorScoreDatos(p) > proveedorScoreDatos(actual) && !actual.synced;
+    const canon = preferirNuevo ? { ...p } : fusionarProveedorDatos(actual, p);
+    const descartado = preferirNuevo ? actual : p;
+    dedupe[idx] = canon;
+    idCanonico.set(actual.id, canon.id);
+    idCanonico.set(p.id, canon.id);
+    if (descartado.id !== canon.id) idCanonico.set(descartado.id, canon.id);
+  });
+
+  if (opciones.migrarDocumentos && idCanonico.size) {
+    const proveedoresById = new Map(dedupe.map(p => [p.id, p]));
+    const docs = getStorage('hcarmen_facturas').map(f => {
+      const canonId = idCanonico.get(f.proveedorId);
+      const canon = canonId ? proveedoresById.get(canonId) : null;
+      return canon && canonId !== f.proveedorId
+        ? { ...f, proveedorId: canonId, proveedor: canon.razonSocial || f.proveedor, synced: false }
+        : f;
+    });
+    setStorage('hcarmen_facturas', docs);
+  }
+  return dedupe;
+}
+
+function buscarProveedorDuplicado(prov, lista, excluirId) {
+  if (!proveedorNombreClave(prov)) return null;
+  return (lista || []).find(p => p.id !== excluirId && proveedoresEquivalentes(p, prov)) || null;
 }
 
 function escapeHtml(v) {
@@ -3198,7 +3274,7 @@ async function guardarProveedor() {
   if (!razonSocial) { showToast('La razón social es obligatoria', 'error'); return; }
   const provs = getProveedores();
   const editId = document.getElementById('editProvId').value;
-  const prov = {
+  let prov = {
     id: editId || getId(),
     razonSocial,
     cif: document.getElementById('pCif').value.trim(),
@@ -3216,21 +3292,33 @@ async function guardarProveedor() {
     notas: document.getElementById('pNotas').value.trim(),
     synced: false
   };
-  if (editId) {
-    const idx = provs.findIndex(p => p.id === editId);
+  const duplicado = buscarProveedorDuplicado(prov, provs, editId);
+  let syncComoEdicion = !!editId;
+  if (duplicado) {
+    if (editId) {
+      showToast('Ya existe otro proveedor con el mismo CIF o nombre', 'error');
+      return;
+    }
+    prov = fusionarProveedorDatos(duplicado, prov);
+    prov.id = duplicado.id;
+    prov.synced = false;
+    syncComoEdicion = true;
+  }
+  if (syncComoEdicion) {
+    const idx = provs.findIndex(p => p.id === prov.id);
     if (idx >= 0) provs[idx] = prov; else provs.push(prov);
   } else {
     provs.push(prov);
   }
-  setStorage('hcarmen_proveedores', provs);
-  const ok = await syncData('saveProveedor', { proveedor: prov, isEdit: !!editId });
+  setStorage('hcarmen_proveedores', deduplicarProveedores(provs, { migrarDocumentos: true }));
+  const ok = await syncData('saveProveedor', { proveedor: prov, isEdit: syncComoEdicion });
   if (ok) {
     setStorage('hcarmen_proveedores', getStorage('hcarmen_proveedores').map(p => p.id === prov.id ? {...p, synced:true} : p));
   }
   cerrarModalProveedor();
   renderListaProveedores('');
   showToast(ok ? '✓ Proveedor guardado y sincronizado' : '✓ Guardado localmente', ok ? 'ok' : '');
-  registrarLog('PROVEEDOR', (editId ? 'Editado: ' : 'Nuevo: ') + razonSocial);
+  registrarLog('PROVEEDOR', (syncComoEdicion ? 'Editado: ' : 'Nuevo: ') + razonSocial);
 }
 
 function renderListaProveedores(filtro) {
@@ -3871,7 +3959,7 @@ async function cargarDatosDesdeSheet() {
       }));
       const sheetIds = new Set(provSheet.map(p => p.id));
       const soloLocales = provLocal.filter(p => !p.synced && !sheetIds.has(p.id));
-      setStorage('hcarmen_proveedores', [...provSheet, ...soloLocales]);
+      setStorage('hcarmen_proveedores', deduplicarProveedores([...provSheet, ...soloLocales], { migrarDocumentos: true }));
     }
 
     console.log('[SYNC] Sincronizacion completa con Google Sheets');
