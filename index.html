@@ -2041,6 +2041,19 @@
 <!-- ══════════════════════════════════════
      PANTALLA: HISTORIAL
 ════════════════════════════════════════ -->
+<div class="modal-overlay" id="modalVincularAlbaranes" style="display:none">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title">Vincular albaranes</div>
+    <div id="vincularAlbaranesInfo" style="font-size:14px;color:var(--texto);background:var(--verde-suave);border-radius:10px;padding:12px;margin-bottom:12px"></div>
+    <div id="vincularAlbaranesLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+    <div id="vincularAlbaranesResumen" style="font-size:13px;color:var(--texto);background:var(--gris-claro);border-radius:10px;padding:12px"></div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="if(_vincularAlbaranesResolver)_vincularAlbaranesResolver([])">Saltar</button>
+      <button onclick="confirmarVinculacionAlbaranes()" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--verde);color:white;font-family:'Lato',sans-serif;font-size:15px;font-weight:700;cursor:pointer">Vincular seleccionados</button>
+    </div>
+  </div>
+</div>
+
 <div class="screen" id="screen-historial">
   <div class="header">
     <div class="header-top">
@@ -2275,7 +2288,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.9.0';
+const APP_VERSION = 'v1.10.0';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 const MODOS_FACTURACION = {
   revisar: 'Revisar manualmente',
@@ -2990,6 +3003,15 @@ function normalizarTexto(v) {
   return String(v || '').toLowerCase().trim();
 }
 
+function escapeHtml(v) {
+  return String(v || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function facturaKey(f) {
   return String((f && (f.syncId || f.id)) || [
     f && f.fecha,
@@ -3061,6 +3083,47 @@ function labelEstadoFacturacion(doc) {
     revisar: 'Revisar'
   };
   return labels[estado] || estado;
+}
+
+function facturaPayload(f) {
+  return {
+    fecha: f.fecha,
+    proveedor: f.proveedor,
+    tienda: nombreTienda(f.tienda),
+    importe: f.importeTotal,
+    proveedorId: f.proveedorId || '',
+    tipo: f.tipo,
+    numeroFactura: f.numeroFactura || '',
+    notas: f.notas || '',
+    usuario: f.usuario || '',
+    syncId: f.syncId,
+    createdAt: f.createdAt || nowIso(),
+    estadoFacturacion: f.estadoFacturacion || '',
+    contabiliza: f.contabiliza,
+    facturaRelacionadaId: f.facturaRelacionadaId || '',
+    albaranesRelacionados: f.albaranesRelacionados || []
+  };
+}
+
+function mismoMesDocumento(a, b) {
+  if (!a || !b) return false;
+  return String(a).slice(0, 7) === String(b).slice(0, 7);
+}
+
+function esAlbaranPendienteParaFactura(doc, factura) {
+  if (!doc || !factura || doc.tipo !== 'albaran') return false;
+  if (doc.estadoFacturacion === 'facturado') return false;
+  if (documentoContabiliza(doc)) return false;
+  if (doc.facturaRelacionadaId) return false;
+  if ((doc.syncId || doc.id) === (factura.syncId || factura.id)) return false;
+  if (factura.proveedorId && doc.proveedorId && factura.proveedorId === doc.proveedorId) return true;
+  return normalizarTexto(doc.proveedor) === normalizarTexto(factura.proveedor);
+}
+
+function albaranesPendientesParaFactura(factura) {
+  return getStorage('hcarmen_facturas')
+    .filter(f => esAlbaranPendienteParaFactura(f, factura))
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
 }
 
 function seleccionarProveedor(id) {
@@ -3356,6 +3419,103 @@ function mostrarModalDuplicadoGasto(dup) {
 }
 
 // ── GUARDAR FACTURA ──
+let _vincularAlbaranesResolver = null;
+let _vincularFacturaActiva = null;
+
+function mostrarModalVincularAlbaranes(factura, candidatos) {
+  if (!candidatos || !candidatos.length) return Promise.resolve([]);
+  _vincularFacturaActiva = factura;
+  return new Promise(resolve => {
+    _vincularAlbaranesResolver = function(ids) {
+      document.getElementById('modalVincularAlbaranes').style.display = 'none';
+      _vincularAlbaranesResolver = null;
+      _vincularFacturaActiva = null;
+      resolve(ids || []);
+    };
+
+    document.getElementById('vincularAlbaranesInfo').innerHTML =
+      '<strong>' + escapeHtml(factura.proveedor) + '</strong><br>' +
+      'Hay ' + candidatos.length + ' albaran' + (candidatos.length !== 1 ? 'es' : '') +
+      ' pendiente' + (candidatos.length !== 1 ? 's' : '') +
+      ' que puedes asociar a esta factura de ' + fmtEur(factura.importeTotal) + '.';
+
+    const algunoMismoMes = candidatos.some(a => mismoMesDocumento(a.fecha, factura.fecha));
+    document.getElementById('vincularAlbaranesLista').innerHTML = candidatos.map(a => {
+      const id = a.id || a.syncId;
+      const checked = algunoMismoMes ? mismoMesDocumento(a.fecha, factura.fecha) : candidatos.length <= 5;
+      return '<label style="display:flex;gap:10px;align-items:flex-start;background:white;border:1px solid var(--gris-claro);border-radius:10px;padding:10px 12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)">' +
+        '<input type="checkbox" class="chk-vincular-albaran" value="' + escapeHtml(id) + '" data-importe="' + (a.importeTotal || 0) + '" ' + (checked ? 'checked' : '') + ' onchange="actualizarResumenVinculacion()">' +
+        '<div style="flex:1;min-width:0">' +
+          '<div style="font-size:14px;font-weight:800;color:var(--texto)">' + escapeHtml(a.numeroFactura || 'Albaran sin numero') + '</div>' +
+          '<div style="font-size:12px;color:var(--gris);margin-top:2px">' + escapeHtml(formatFecha(a.fecha)) + (a.tienda ? ' - ' + escapeHtml(nombreTienda(a.tienda)) : '') + '</div>' +
+        '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:var(--naranja);white-space:nowrap">' + fmtEur(a.importeTotal || 0) + '</div>' +
+      '</label>';
+    }).join('');
+
+    actualizarResumenVinculacion();
+    document.getElementById('modalVincularAlbaranes').style.display = 'flex';
+  });
+}
+
+function actualizarResumenVinculacion() {
+  const factura = _vincularFacturaActiva;
+  const checks = Array.from(document.querySelectorAll('.chk-vincular-albaran'));
+  const seleccionados = checks.filter(c => c.checked);
+  const total = seleccionados.reduce((s, c) => s + (parseFloat(c.dataset.importe) || 0), 0);
+  const diff = factura ? (factura.importeTotal || 0) - total : 0;
+  const color = Math.abs(diff) <= 0.05 ? 'var(--verde)' : 'var(--naranja)';
+  document.getElementById('vincularAlbaranesResumen').innerHTML =
+    '<strong>' + seleccionados.length + '</strong> seleccionado' + (seleccionados.length !== 1 ? 's' : '') +
+    ' - suma albaranes <strong>' + fmtEur(total) + '</strong>' +
+    (factura ? ' - diferencia <strong style="color:' + color + '">' + fmtEur(diff) + '</strong>' : '');
+}
+
+function confirmarVinculacionAlbaranes() {
+  const ids = Array.from(document.querySelectorAll('.chk-vincular-albaran'))
+    .filter(c => c.checked)
+    .map(c => c.value);
+  if (_vincularAlbaranesResolver) _vincularAlbaranesResolver(ids);
+}
+
+function aplicarVinculacionAlbaranesLocal(factura, idsAlbaranes) {
+  const ids = Array.isArray(idsAlbaranes) ? idsAlbaranes : [];
+  if (!ids.length) return;
+  const idSet = new Set(ids.map(String));
+  const facturaId = String(factura.id || factura.syncId);
+  const docs = getStorage('hcarmen_facturas').map(f => {
+    const key = String(f.id || f.syncId);
+    if (key === facturaId) {
+      return { ...f, albaranesRelacionados: ids, synced: false };
+    }
+    if (idSet.has(key)) {
+      return {
+        ...f,
+        estadoFacturacion: 'facturado',
+        contabiliza: false,
+        facturaRelacionadaId: factura.syncId,
+        synced: false
+      };
+    }
+    return f;
+  });
+  setStorage('hcarmen_facturas', docs);
+}
+
+async function sincronizarAlbaranesVinculados(idsAlbaranes) {
+  const ids = new Set((idsAlbaranes || []).map(String));
+  if (!ids.size) return;
+  const docs = getStorage('hcarmen_facturas').filter(f => ids.has(String(f.id || f.syncId)));
+  for (const alb of docs) {
+    const ok = await syncData('addFactura', { factura: facturaPayload(alb) });
+    if (ok) {
+      setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(f =>
+        String(f.id || f.syncId) === String(alb.id || alb.syncId) ? { ...f, synced: true } : f
+      ));
+    }
+  }
+}
+
 async function guardarFactura() {
   try {
     await _guardarFactura();
@@ -3427,6 +3587,12 @@ async function _guardarFactura() {
     synced: false
   };
 
+  if (factura.tipo === 'factura') {
+    const candidatosAlbaranes = albaranesPendientesParaFactura(factura);
+    const idsVinculados = await mostrarModalVincularAlbaranes(factura, candidatosAlbaranes);
+    factura.albaranesRelacionados = idsVinculados || [];
+  }
+
   // Verificar si el proveedor existe en la BD — si no, ofrecer crearlo
   const provs = getProveedores();
   const provExiste = proveedorSeleccionado || provs.find(p =>
@@ -3440,6 +3606,7 @@ async function _guardarFactura() {
       const facturas = getStorage('hcarmen_facturas');
       facturas.push(facturaTemp);
       setStorage('hcarmen_facturas', facturas);
+      aplicarVinculacionAlbaranesLocal(factura, factura.albaranesRelacionados);
       resetFormFactura();
       // Abrir modal de nuevo proveedor con nombre prellenado
       mostrarModalProveedor();
@@ -3448,20 +3615,10 @@ async function _guardarFactura() {
       showToast('Factura guardada. Completa los datos del proveedor.', 'ok');
       hideLoading();
       // Sincronizar factura en background
-      syncData('addFactura', {factura: {
-        fecha: factura.fecha, proveedor: factura.proveedor,
-        tienda: nombreTienda(factura.tienda), importe: factura.importeTotal,
-        proveedorId: factura.proveedorId,
-        tipo: factura.tipo, numeroFactura: factura.numeroFactura,
-        notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId,
-        createdAt: factura.createdAt,
-        estadoFacturacion: factura.estadoFacturacion,
-        contabiliza: factura.contabiliza,
-        facturaRelacionadaId: factura.facturaRelacionadaId || '',
-        albaranesRelacionados: factura.albaranesRelacionados || []
-      }}).then(ok => {
+      syncData('addFactura', {factura: facturaPayload(factura)}).then(ok => {
         if (ok) setStorage('hcarmen_facturas',
           getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
+        sincronizarAlbaranesVinculados(factura.albaranesRelacionados);
       });
       navBack();
       return;
@@ -3472,27 +3629,13 @@ async function _guardarFactura() {
   const facturas = getStorage('hcarmen_facturas');
   facturas.push(factura);
   setStorage('hcarmen_facturas', facturas);
+  aplicarVinculacionAlbaranesLocal(factura, factura.albaranesRelacionados);
 
-  const ok = await syncData('addFactura', {factura: {
-    fecha: factura.fecha,
-    proveedor: factura.proveedor,
-    tienda: nombreTienda(factura.tienda),
-    importe: factura.importeTotal,
-    proveedorId: factura.proveedorId,
-    tipo: factura.tipo,
-    numeroFactura: factura.numeroFactura,
-    notas: factura.notas,
-    usuario: factura.usuario,
-    syncId: factura.syncId,
-    createdAt: factura.createdAt,
-    estadoFacturacion: factura.estadoFacturacion,
-    contabiliza: factura.contabiliza,
-    facturaRelacionadaId: factura.facturaRelacionadaId || '',
-    albaranesRelacionados: factura.albaranesRelacionados || []
-  }});
+  const ok = await syncData('addFactura', {factura: facturaPayload(factura)});
   if (ok) {
     setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
   }
+  await sincronizarAlbaranesVinculados(factura.albaranesRelacionados);
 
   hideLoading();
   const logDetFact = factura.proveedor + ' · ' + fmtEur(factura.importeTotal) +
@@ -3872,7 +4015,17 @@ async function borrarRegistro(tipo, id, btn) {
 
   // Borrar del localStorage
   if (tipo === 'factura') {
-    setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').filter(x => x.id !== id));
+    const docsFactura = getStorage('hcarmen_facturas');
+    const eliminado = docsFactura.find(x => x.id === id || x.syncId === id);
+    let nuevosDocs = docsFactura.filter(x => x.id !== id && x.syncId !== id);
+    if (eliminado && eliminado.tipo === 'factura' && eliminado.albaranesRelacionados && eliminado.albaranesRelacionados.length) {
+      const idsAlbaranes = new Set(eliminado.albaranesRelacionados.map(String));
+      nuevosDocs = nuevosDocs.map(x => idsAlbaranes.has(String(x.id || x.syncId))
+        ? { ...x, estadoFacturacion: 'pendiente_factura', facturaRelacionadaId: '', synced: false }
+        : x
+      );
+    }
+    setStorage('hcarmen_facturas', nuevosDocs);
   } else if (tipo === 'venta') {
     setStorage('hcarmen_ventas', getStorage('hcarmen_ventas').filter(x => x.id !== id));
   } else if (tipo === 'gasto') {
@@ -3881,6 +4034,7 @@ async function borrarRegistro(tipo, id, btn) {
 
   // Borrar del Sheet
   await syncData('deleteRegistro', { tipo, syncId: id });
+  if (tipo === 'factura') await reintentarPendientes();
 
   registrarLog('BORRADO', tipo + ' eliminado (id:' + id + ')');
   showToast('Registro eliminado', 'ok');
@@ -3925,6 +4079,7 @@ function renderAlbaranes(filtro) {
       const modo = MODOS_FACTURACION[modoFacturacionProveedor(prov)] || 'Revisar';
       const estado = labelEstadoFacturacion(f);
       const cuenta = documentoContabiliza(f);
+      const facturado = f.estadoFacturacion === 'facturado';
       return `<div class="item-card">
         <div class="item-tipo-dot factura">📋</div>
         <div class="item-info">
@@ -3935,10 +4090,13 @@ function renderAlbaranes(filtro) {
           </div>
           <div style="font-size:11px;color:var(--gris)">Modo: ${modo}</div>
           <div style="font-size:11px;font-weight:800;color:${cuenta?'var(--verde)':'var(--naranja)'}">${estado}</div>
+          ${f.facturaRelacionadaId ? `<div style="font-size:11px;color:var(--gris)">Factura vinculada: ${String(f.facturaRelacionadaId).slice(0, 10)}</div>` : ''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
           <div class="item-importe gasto">${fmtEur(f.importeTotal)}</div>
-          <button onclick="toggleContabilizaAlbaran('${f.id || f.syncId}')" style="background:${cuenta?'#fee2e2':'var(--verde-suave)'};border:none;color:${cuenta?'var(--rojo)':'var(--verde)'};border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">${cuenta?'No contar':'Contar'}</button>
+          ${facturado
+            ? `<span style="background:var(--verde-suave);color:var(--verde);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700">Facturado</span>`
+            : `<button onclick="toggleContabilizaAlbaran('${f.id || f.syncId}')" style="background:${cuenta?'#fee2e2':'var(--verde-suave)'};border:none;color:${cuenta?'var(--rojo)':'var(--verde)'};border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">${cuenta?'No contar':'Contar'}</button>`}
         </div>
       </div>`;
     }).join('');

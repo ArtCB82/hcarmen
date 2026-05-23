@@ -86,6 +86,7 @@
 - [x] Los albaranes nuevos no se contabilizan por defecto si el proveedor factura despues
 - [x] Vista de albaranes pendientes/facturados/contabilizables
 - [x] Resumenes y estadisticas usan solo documentos contabilizables para evitar doble conteo nuevo
+- [x] Vinculacion manual/asistida de facturas con albaranes pendientes del mismo proveedor
 
 ### Versión de la app
 - [x] Constante `APP_VERSION` en el JS del frontend
@@ -132,6 +133,5 @@
 
 - [ ] Desglose de artículos en líneas de factura (OCR línea a línea, no solo importe total)
 - [ ] Notificaciones / alertas de gastos por encima de umbral mensual configurable
-- [ ] Vinculacion manual/asistida de facturas con albaranes pendientes
 - [ ] OCR de numeros de albaran dentro de facturas agrupadas
 - [ ] Alertas de diferencias entre factura y suma de albaranes

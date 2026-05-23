@@ -222,6 +222,7 @@ La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del
 
 | Versión | Cambios principales |
 |---|---|
+| v1.10.0 | Vinculacion asistida de facturas con albaranes pendientes y sincronizacion de relaciones |
 | v1.9.0 | Control inicial de facturacion: modo por proveedor, albaranes pendientes y costes solo contabilizables |
 | v1.8.0 | OCR tambien en Gastos Manuales con relleno de concepto, importe, fecha y categoria sugerida |
 | v1.7.0 | `proveedorId` estable en documentos, `createdAt` en registros e historial con vista calendario mensual/semanal |
