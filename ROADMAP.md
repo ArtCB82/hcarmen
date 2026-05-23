@@ -80,6 +80,13 @@
 - [x] Relleno automatico de concepto, importe y fecha desde OCR
 - [x] Sugerencia de categoria de gasto por palabras clave
 
+### Control de facturacion: albaranes vs facturas
+- [x] Campo modo de facturacion por proveedor (pago inmediato, factura por entrega, factura mensual, solo factura, revisar)
+- [x] Estado de facturacion por documento y flag `contabiliza`
+- [x] Los albaranes nuevos no se contabilizan por defecto si el proveedor factura despues
+- [x] Vista de albaranes pendientes/facturados/contabilizables
+- [x] Resumenes y estadisticas usan solo documentos contabilizables para evitar doble conteo nuevo
+
 ### Versión de la app
 - [x] Constante `APP_VERSION` en el JS del frontend
 - [x] Badge de versión visible al final de la pantalla Home (texto pequeño, no intrusivo)
@@ -125,3 +132,6 @@
 
 - [ ] Desglose de artículos en líneas de factura (OCR línea a línea, no solo importe total)
 - [ ] Notificaciones / alertas de gastos por encima de umbral mensual configurable
+- [ ] Vinculacion manual/asistida de facturas con albaranes pendientes
+- [ ] OCR de numeros de albaran dentro de facturas agrupadas
+- [ ] Alertas de diferencias entre factura y suma de albaranes

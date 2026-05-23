@@ -1329,13 +1329,18 @@
       <span class="btn-label">Compras por Proveedor</span>
       <span class="btn-desc">Cuánto gastamos</span>
     </button>
+    <button class="menu-btn" onclick="navTo('screen-albaranes')">
+      <span class="btn-icon">📋</span>
+      <span class="btn-label">Albaranes</span>
+      <span class="btn-desc">Pendientes de factura</span>
+    </button>
+  </div>
+  <div class="menu-grid">
     <button class="menu-btn" onclick="navTo('screen-gestion-proveedores');renderListaProveedores('')">
       <span class="btn-icon">🏢</span>
       <span class="btn-label">Proveedores</span>
       <span class="btn-desc">Base de datos</span>
     </button>
-  </div>
-  <div class="menu-grid single">
     <button class="menu-btn accent" onclick="navTo('screen-estadisticas')">
       <span class="btn-icon">📈</span>
       <span class="btn-label">Estadísticas Avanzadas</span>
@@ -1936,6 +1941,29 @@
         <div class="field-label">IBAN / Datos bancarios</div>
         <input type="text" class="field-input" id="pIban" placeholder="ES12 2100 0418 45XX XXXX XXXX">
       </div>
+      <div style="background:var(--verde-suave);border-radius:10px;padding:12px;margin:4px 0">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:var(--verde);margin-bottom:8px">Facturación</div>
+        <div class="field-group">
+          <div class="field-label">Modo de facturación</div>
+          <select class="field-select" id="pModoFacturacion">
+            <option value="revisar">Revisar manualmente</option>
+            <option value="pago_inmediato">Pago inmediato / albarán contabilizable</option>
+            <option value="factura_unitaria">Factura por entrega</option>
+            <option value="factura_mensual">Factura agrupada mensual</option>
+            <option value="solo_factura">Solo factura</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+          <div class="field-group">
+            <div class="field-label">Días sin factura</div>
+            <input type="number" class="field-input" id="pDiasMaxFactura" min="0" step="1" placeholder="35">
+          </div>
+          <div class="field-group">
+            <div class="field-label">Tolerancia €</div>
+            <input type="number" class="field-input" id="pToleranciaFactura" min="0" step="0.01" placeholder="1.00">
+          </div>
+        </div>
+      </div>
       <div class="field-group">
         <div class="field-label">Notas / Condiciones comerciales</div>
         <textarea class="field-textarea" id="pNotas" placeholder="Días de pago, descuentos, observaciones..."></textarea>
@@ -2061,6 +2089,27 @@
     <button class="calendar-tab" id="calTabSemana" onclick="setCalendarioVista('semana')">Semanal</button>
   </div>
   <div id="calendarioContenido"></div>
+</div>
+
+<div class="screen" id="screen-albaranes">
+  <div class="header">
+    <div class="header-top">
+      <button class="btn-back" onclick="navBack()">&larr;</button>
+      <div>
+        <div class="header-title">Albaranes</div>
+        <div class="header-subtitle">Pendientes de factura y control de compras</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="historial-filtros">
+    <button class="filtro-btn active" onclick="filtrarAlbaranes('pendientes', this)">Pendientes</button>
+    <button class="filtro-btn" onclick="filtrarAlbaranes('facturados', this)">Facturados</button>
+    <button class="filtro-btn" onclick="filtrarAlbaranes('contabilizables', this)">Contabilizables</button>
+    <button class="filtro-btn" onclick="filtrarAlbaranes('todos', this)">Todos</button>
+  </div>
+
+  <div class="lista-items" id="albaranesLista"></div>
 </div>
 
 <!-- ══════════════════════════════════════
@@ -2226,8 +2275,15 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.8.0';
+const APP_VERSION = 'v1.9.0';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
+const MODOS_FACTURACION = {
+  revisar: 'Revisar manualmente',
+  pago_inmediato: 'Pago inmediato',
+  factura_unitaria: 'Factura por entrega',
+  factura_mensual: 'Factura mensual',
+  solo_factura: 'Solo factura'
+};
 
 // ── ESTADO ──
 let tiendaFact = null;
@@ -2321,6 +2377,7 @@ window.addEventListener('popstate', function(e) {
 function onScreenEnter(id) {
   if (id === 'screen-historial') renderHistorial('todo');
   if (id === 'screen-calendario') renderCalendario();
+  if (id === 'screen-albaranes') renderAlbaranes('pendientes');
   if (id === 'screen-resumen') renderResumen();
   if (id === 'screen-proveedores') renderProveedores();
   if (id === 'screen-factura') { setOcrContext('factura'); setFechaHoy('factFecha'); tiendaFact = null; resetTiendaBtns(''); }
@@ -2954,6 +3011,58 @@ function resolverProveedorParaFactura(nombre) {
   return getProveedores().find(p => normalizarTexto(p.razonSocial) === buscado) || null;
 }
 
+function proveedorDeDocumento(doc) {
+  if (!doc) return null;
+  if (doc.proveedorId) {
+    const porId = getProveedores().find(p => p.id === doc.proveedorId);
+    if (porId) return porId;
+  }
+  return resolverProveedorParaFactura(doc.proveedor);
+}
+
+function modoFacturacionProveedor(proveedor) {
+  return (proveedor && proveedor.modoFacturacion) || 'revisar';
+}
+
+function estadoInicialDocumento(tipo, proveedor) {
+  if (tipo === 'factura' || tipo === 'ticket') {
+    return { estadoFacturacion: 'contabilizable', contabiliza: true };
+  }
+  if (tipo === 'albaran') {
+    const modo = modoFacturacionProveedor(proveedor);
+    if (modo === 'pago_inmediato') return { estadoFacturacion: 'contabilizable', contabiliza: true };
+    if (modo === 'solo_factura') return { estadoFacturacion: 'no_contabilizar', contabiliza: false };
+    return { estadoFacturacion: 'pendiente_factura', contabiliza: false };
+  }
+  return { estadoFacturacion: 'revisar', contabiliza: false };
+}
+
+function documentoContabiliza(doc) {
+  if (typeof doc.contabiliza === 'boolean') return doc.contabiliza;
+  if (normalizarTexto(doc.contabiliza) === 'true') return true;
+  if (normalizarTexto(doc.contabiliza) === 'false') return false;
+  if (doc.estadoFacturacion) {
+    return !['pendiente_factura', 'no_contabilizar', 'revisar'].includes(doc.estadoFacturacion);
+  }
+  return true; // compatibilidad: documentos antiguos siguen contando como antes
+}
+
+function facturasContabilizables(lista) {
+  return (lista || []).filter(documentoContabiliza);
+}
+
+function labelEstadoFacturacion(doc) {
+  const estado = doc.estadoFacturacion || (documentoContabiliza(doc) ? 'contabilizable' : 'pendiente_factura');
+  const labels = {
+    pendiente_factura: 'Pendiente de factura',
+    facturado: 'Facturado',
+    contabilizable: 'Contabilizable',
+    no_contabilizar: 'No contabilizar',
+    revisar: 'Revisar'
+  };
+  return labels[estado] || estado;
+}
+
 function seleccionarProveedor(id) {
   const provs = getProveedores();
   const p = provs.find(x => x.id === id);
@@ -3005,10 +3114,14 @@ function mostrarModalProveedor(id) {
     document.getElementById('pContactoTel').value = p.contactoTel || '';
     document.getElementById('pContactoEmail').value = p.contactoEmail || '';
     document.getElementById('pIban').value = p.iban || '';
+    document.getElementById('pModoFacturacion').value = p.modoFacturacion || 'revisar';
+    document.getElementById('pDiasMaxFactura').value = p.diasMaxFactura || '';
+    document.getElementById('pToleranciaFactura').value = p.toleranciaFactura || '';
     document.getElementById('pNotas').value = p.notas || '';
   } else {
     titulo.textContent = 'Nuevo proveedor';
-    ['pRazonSocial','pCif','pTelefono','pEmail','pWeb','pDireccion','pContactoNombre','pContactoTel','pContactoEmail','pIban','pNotas'].forEach(id => { document.getElementById(id).value = ''; });
+    ['pRazonSocial','pCif','pTelefono','pEmail','pWeb','pDireccion','pContactoNombre','pContactoTel','pContactoEmail','pIban','pDiasMaxFactura','pToleranciaFactura','pNotas'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('pModoFacturacion').value = 'revisar';
   }
   modal.style.display = 'flex';
 }
@@ -3034,6 +3147,9 @@ async function guardarProveedor() {
     contactoTel: document.getElementById('pContactoTel').value.trim(),
     contactoEmail: document.getElementById('pContactoEmail').value.trim(),
     iban: document.getElementById('pIban').value.trim(),
+    modoFacturacion: document.getElementById('pModoFacturacion').value || 'revisar',
+    diasMaxFactura: parseInt(document.getElementById('pDiasMaxFactura').value, 10) || '',
+    toleranciaFactura: parseFloat(document.getElementById('pToleranciaFactura').value) || '',
     notas: document.getElementById('pNotas').value.trim(),
     synced: false
   };
@@ -3074,6 +3190,7 @@ function renderListaProveedores(filtro) {
         '<div class="item-meta">' +
           '<span>' + (p.cif||'Sin CIF') + '</span>' +
           (p.telefono ? '<span>' + p.telefono + '</span>' : '') +
+          '<span>' + (MODOS_FACTURACION[p.modoFacturacion || 'revisar'] || 'Revisar') + '</span>' +
           (nDocs ? '<span>' + nDocs + ' doc' + (nDocs!==1?'s':'') + '</span>' : '') +
         '</div>' +
         '<div class="item-synced">' + (p.synced ? '☁️ Sincronizado' : '⏳ Pendiente') + '</div>' +
@@ -3152,7 +3269,11 @@ async function confirmarReasignacion() {
         notas: fActualizada.notas || '',
         usuario: fActualizada.usuario || '',
         syncId: fActualizada.syncId,
-        createdAt: fActualizada.createdAt || nowIso()
+        createdAt: fActualizada.createdAt || nowIso(),
+        estadoFacturacion: fActualizada.estadoFacturacion || '',
+        contabiliza: fActualizada.contabiliza,
+        facturaRelacionadaId: fActualizada.facturaRelacionadaId || '',
+        albaranesRelacionados: fActualizada.albaranesRelacionados || []
       }
     });
     if (ok) {
@@ -3284,19 +3405,25 @@ async function _guardarFactura() {
 
   const syncId = getId();
   const proveedorBD = proveedorSeleccionado || resolverProveedorParaFactura(proveedor);
+  const tipoDocumento = document.getElementById('factTipo').value;
+  const estadoDoc = estadoInicialDocumento(tipoDocumento, proveedorBD);
   const factura = {
     id: syncId,
     syncId: syncId,
     fecha,
     proveedor,
     proveedorId: proveedorBD ? proveedorBD.id : '',
-    tipo: document.getElementById('factTipo').value,
+    tipo: tipoDocumento,
     numeroFactura,
     importeTotal: importe,
     tienda: tiendaFact,
     notas: document.getElementById('factNotas').value.trim(),
     usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
     createdAt: nowIso(),
+    estadoFacturacion: estadoDoc.estadoFacturacion,
+    contabiliza: estadoDoc.contabiliza,
+    facturaRelacionadaId: '',
+    albaranesRelacionados: [],
     synced: false
   };
 
@@ -3327,7 +3454,11 @@ async function _guardarFactura() {
         proveedorId: factura.proveedorId,
         tipo: factura.tipo, numeroFactura: factura.numeroFactura,
         notas: factura.notas, usuario: factura.usuario, syncId: factura.syncId,
-        createdAt: factura.createdAt
+        createdAt: factura.createdAt,
+        estadoFacturacion: factura.estadoFacturacion,
+        contabiliza: factura.contabiliza,
+        facturaRelacionadaId: factura.facturaRelacionadaId || '',
+        albaranesRelacionados: factura.albaranesRelacionados || []
       }}).then(ok => {
         if (ok) setStorage('hcarmen_facturas',
           getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
@@ -3353,7 +3484,11 @@ async function _guardarFactura() {
     notas: factura.notas,
     usuario: factura.usuario,
     syncId: factura.syncId,
-    createdAt: factura.createdAt
+    createdAt: factura.createdAt,
+    estadoFacturacion: factura.estadoFacturacion,
+    contabiliza: factura.contabiliza,
+    facturaRelacionadaId: factura.facturaRelacionadaId || '',
+    albaranesRelacionados: factura.albaranesRelacionados || []
   }});
   if (ok) {
     setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(f => f.id===factura.id ? {...f, synced:true} : f));
@@ -3531,6 +3666,10 @@ async function cargarDatosDesdeSheet() {
         notas: f.notas || '', usuario: f.usuario || '',
         numeroFactura: f.numeroFactura || '',
         createdAt: f.createdAt || f.created_at || f.fechaCreacion || (localesFById.get(f.syncId)||{}).createdAt || '',
+        estadoFacturacion: f.estadoFacturacion || f.estado_facturacion || (localesFById.get(f.syncId)||{}).estadoFacturacion || '',
+        contabiliza: f.contabiliza !== undefined && f.contabiliza !== '' ? f.contabiliza : (localesFById.get(f.syncId)||{}).contabiliza,
+        facturaRelacionadaId: f.facturaRelacionadaId || f.factura_relacionada_id || (localesFById.get(f.syncId)||{}).facturaRelacionadaId || '',
+        albaranesRelacionados: f.albaranesRelacionados || f.albaranes_relacionados || (localesFById.get(f.syncId)||{}).albaranesRelacionados || [],
         synced: true
       }));
       const sheetIds = new Set(delSheet.map(f => f.syncId));
@@ -3581,6 +3720,9 @@ async function cargarDatosDesdeSheet() {
         contactoTel: p.contactoTel || p.contacto_tel || '',
         contactoEmail: p.contactoEmail || p.contacto_email || '',
         iban: p.iban || p.IBAN || '',
+        modoFacturacion: p.modoFacturacion || p.modo_facturacion || (provLocal.find(x => x.id === (p.id || p.Id))||{}).modoFacturacion || 'revisar',
+        diasMaxFactura: p.diasMaxFactura || p.dias_max_factura || (provLocal.find(x => x.id === (p.id || p.Id))||{}).diasMaxFactura || '',
+        toleranciaFactura: p.toleranciaFactura || p.tolerancia_factura || (provLocal.find(x => x.id === (p.id || p.Id))||{}).toleranciaFactura || '',
         notas: p.notas || '',
         synced: true
       }));
@@ -3609,7 +3751,11 @@ async function reintentarPendientes() {
       importe: f.importeTotal, proveedorId: f.proveedorId || '',
       tipo: f.tipo, numeroFactura: f.numeroFactura || '',
       notas: f.notas, usuario: f.usuario || '', syncId: f.syncId,
-      createdAt: f.createdAt || nowIso()
+      createdAt: f.createdAt || nowIso(),
+      estadoFacturacion: f.estadoFacturacion || '',
+      contabiliza: f.contabiliza,
+      facturaRelacionadaId: f.facturaRelacionadaId || '',
+      albaranesRelacionados: f.albaranesRelacionados || []
     }});
     if (ok) setStorage('hcarmen_facturas', getStorage('hcarmen_facturas').map(x => x.id===f.id ? {...x, synced:true} : x));
   }
@@ -3707,6 +3853,7 @@ function renderHistorial(filtro) {
           <span class="item-tienda-tag">${tiendaTag}</span>
         </div>
         ${item.usuario ? `<div style="color:var(--gris);font-size:11px">👤 ${item.usuario}</div>` : ''}
+        ${item._tipo === 'factura' ? `<div style="color:${documentoContabiliza(item)?'var(--verde)':'var(--naranja)'};font-size:11px;font-weight:700">${labelEstadoFacturacion(item)}</div>` : ''}
         ${item.createdAt ? `<div style="color:var(--gris);font-size:11px">Guardado: ${new Date(item.createdAt).toLocaleString('es-ES')}</div>` : ''}
         <div class="item-synced">${syncIcon} ${item.synced ? 'Sincronizado' : 'Pendiente'}</div>
       </div>
@@ -3748,6 +3895,71 @@ function filtrarHistorial(filtro, btn) {
   document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderHistorial(filtro);
+}
+
+function renderAlbaranes(filtro) {
+  let docs = getStorage('hcarmen_facturas')
+    .filter(f => f.tipo === 'albaran')
+    .sort((a,b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  if (filtro === 'pendientes') docs = docs.filter(f => !documentoContabiliza(f) && (f.estadoFacturacion || 'pendiente_factura') !== 'facturado');
+  else if (filtro === 'facturados') docs = docs.filter(f => f.estadoFacturacion === 'facturado');
+  else if (filtro === 'contabilizables') docs = docs.filter(documentoContabiliza);
+
+  const lista = document.getElementById('albaranesLista');
+  if (!lista) return;
+  if (!docs.length) {
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><h3>Sin albaranes</h3><p>No hay documentos para este filtro.</p></div>`;
+    return;
+  }
+
+  const total = docs.reduce((s,f) => s + (f.importeTotal || 0), 0);
+  lista.innerHTML =
+    `<div class="stat-card full" style="margin-bottom:4px">
+      <div class="stat-label">${docs.length} albaranes</div>
+      <div class="stat-value small">${fmtEur(total)}</div>
+      <div class="stat-sub">Importe informativo; solo cuenta en costes si es contabilizable</div>
+    </div>` +
+    docs.map(f => {
+      const prov = proveedorDeDocumento(f);
+      const modo = MODOS_FACTURACION[modoFacturacionProveedor(prov)] || 'Revisar';
+      const estado = labelEstadoFacturacion(f);
+      const cuenta = documentoContabiliza(f);
+      return `<div class="item-card">
+        <div class="item-tipo-dot factura">📋</div>
+        <div class="item-info">
+          <div class="item-titulo">${f.proveedor || 'Sin proveedor'}</div>
+          <div class="item-meta">
+            <span>${formatFecha(f.fecha)}</span>
+            <span class="item-tienda-tag">${f.tienda === 'tienda1' ? 'S.Asturio' : f.tienda === 'tienda2' ? 'J.Guzmán' : 'Ambas'}</span>
+          </div>
+          <div style="font-size:11px;color:var(--gris)">Modo: ${modo}</div>
+          <div style="font-size:11px;font-weight:800;color:${cuenta?'var(--verde)':'var(--naranja)'}">${estado}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="item-importe gasto">${fmtEur(f.importeTotal)}</div>
+          <button onclick="toggleContabilizaAlbaran('${f.id || f.syncId}')" style="background:${cuenta?'#fee2e2':'var(--verde-suave)'};border:none;color:${cuenta?'var(--rojo)':'var(--verde)'};border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">${cuenta?'No contar':'Contar'}</button>
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function filtrarAlbaranes(filtro, btn) {
+  document.querySelectorAll('#screen-albaranes .filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAlbaranes(filtro);
+}
+
+function toggleContabilizaAlbaran(id) {
+  const docs = getStorage('hcarmen_facturas').map(f => {
+    if ((f.id || f.syncId) !== id) return f;
+    const next = !documentoContabiliza(f);
+    return { ...f, contabiliza: next, estadoFacturacion: next ? 'contabilizable' : 'pendiente_factura', synced: false };
+  });
+  setStorage('hcarmen_facturas', docs);
+  reintentarPendientes();
+  renderAlbaranes(document.querySelector('#screen-albaranes .filtro-btn.active')?.textContent.trim() === 'Todos' ? 'todos' : document.querySelector('#screen-albaranes .filtro-btn.active')?.textContent.trim() === 'Facturados' ? 'facturados' : document.querySelector('#screen-albaranes .filtro-btn.active')?.textContent.trim() === 'Contabilizables' ? 'contabilizables' : 'pendientes');
+  updateSyncBar();
 }
 
 let calendarioFecha = new Date();
@@ -3869,7 +4081,7 @@ function renderResumen() {
   document.getElementById('mesLabel').textContent = `${MESES[m]} ${y}`;
 
   const ventas = getStorage('hcarmen_ventas').filter(v => enMes(v.fecha, y, m));
-  const facturas = getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m));
+  const facturas = facturasContabilizables(getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m)));
   const gastos = getStorage('hcarmen_gastos').filter(g => enMes(g.fecha, y, m));
 
   const totalVentas = ventas.reduce((s,v) => s+v.total, 0);
@@ -4064,7 +4276,7 @@ function renderProveedores() {
   const m = mesActualProv.getMonth();
   document.getElementById('mesLabelProv').textContent = `${MESES[m]} ${y}`;
 
-  const facturas = getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m));
+  const facturas = facturasContabilizables(getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m)));
   const totalMes = facturas.reduce((s,f) => s+f.importeTotal, 0);
   document.getElementById('provTotalMes').textContent = fmtEur(totalMes);
   document.getElementById('provFacturasMes').textContent = `${facturas.length} factura${facturas.length!==1?'s':''}`;
@@ -4706,7 +4918,7 @@ function renderEstadisticas() {
   if (!rango) return;
 
   const ventas = filtrarPorPeriodoYTienda(getStorage('hcarmen_ventas'), rango);
-  const facturas = filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango);
+  const facturas = facturasContabilizables(filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango));
   const gastos = filtrarPorPeriodoYTienda(getStorage('hcarmen_gastos'), rango);
 
   const totalVentas = ventas.reduce((s,v) => s+v.total, 0);
@@ -4977,7 +5189,7 @@ function renderStatsCompras() {
     return comprasFiltroTienda === 'todas' || x.tienda === comprasFiltroTienda;
   }
 
-  const facturas = todasF.filter(f => f.fecha && enRango(f.fecha) && deTienda(f));
+  const facturas = facturasContabilizables(todasF.filter(f => f.fecha && enRango(f.fecha) && deTienda(f)));
   const gastos   = todosG.filter(g => g.fecha && enRango(g.fecha) && deTienda(g));
 
   const totalCompras = facturas.reduce((s,f) => s+(f.importeTotal||0), 0);
@@ -5001,11 +5213,11 @@ function renderStatsCompras() {
   const durMs = rango.hasta.getTime() - rango.desde.getTime();
   const desdeAnt = new Date(rango.desde.getTime() - durMs);
   const hastaAnt = new Date(rango.desde.getTime() - 1);
-  const facturasAnt = todasF.filter(f => {
+  const facturasAnt = facturasContabilizables(todasF.filter(f => {
     if (!f.fecha) return false;
     const d = new Date(f.fecha);
     return d >= desdeAnt && d <= hastaAnt && deTienda(f);
-  });
+  }));
   const totalAnt = facturasAnt.reduce((s,f) => s+(f.importeTotal||0), 0);
   const varPct = totalAnt > 0 ? ((totalCompras - totalAnt) / totalAnt * 100) : null;
 
@@ -5331,7 +5543,7 @@ function generarPDFResumen() {
   const y = mesActual.getFullYear();
   const m = mesActual.getMonth();
   const ventas   = getStorage('hcarmen_ventas').filter(v => enMes(v.fecha, y, m));
-  const facturas = getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m));
+  const facturas = facturasContabilizables(getStorage('hcarmen_facturas').filter(f => enMes(f.fecha, y, m)));
   const gastos   = getStorage('hcarmen_gastos').filter(g => enMes(g.fecha, y, m));
 
   const totalVentas  = ventas.reduce((s,v) => s + v.total, 0);
@@ -5396,7 +5608,7 @@ function generarPDFVentas() {
   if (!rango) { showToast('Selecciona un período válido', 'error'); return; }
 
   const ventas   = filtrarPorPeriodoYTienda(getStorage('hcarmen_ventas'),   rango);
-  const facturas = filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango);
+  const facturas = facturasContabilizables(filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango));
   const gastos   = filtrarPorPeriodoYTienda(getStorage('hcarmen_gastos'),   rango);
 
   const totalVentas  = ventas.reduce((s,v) => s + v.total, 0);
@@ -5456,7 +5668,7 @@ function generarPDFCompras() {
   function enR(f) { const d=new Date(f.fecha||''); return d>=rango.desde&&d<=rango.hasta; }
   function deTi(x) { return comprasFiltroTienda==='todas'||x.tienda===comprasFiltroTienda; }
 
-  const facturas = getStorage('hcarmen_facturas').filter(f=>f.fecha&&enR(f)&&deTi(f));
+  const facturas = facturasContabilizables(getStorage('hcarmen_facturas').filter(f=>f.fecha&&enR(f)&&deTi(f)));
   const gastos   = getStorage('hcarmen_gastos').filter(g=>g.fecha&&enR(g)&&deTi(g));
 
   const totalCompras = facturas.reduce((s,f)=>s+(f.importeTotal||0),0);

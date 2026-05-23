@@ -31,6 +31,7 @@ Google Apps Script (doGet / doPost)
 | `screen-resumen` | Resumen mensual con KPIs y gráfica semanal |
 | `screen-proveedores` | Compras por proveedor (resumen mensual) |
 | `screen-historial` | Historial de registros |
+| `screen-albaranes` | Control de albaranes pendientes/facturados |
 | `screen-estadisticas` | Selector: Ventas o Compras |
 | `screen-stats-ventas` | Estadísticas avanzadas de ventas |
 | `screen-stats-compras` | Estadísticas avanzadas de compras y gastos |
@@ -50,10 +51,10 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 
 | Clave | Contenido |
 |---|---|
-| `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, proveedorId, tipo, numeroFactura, importeTotal, tienda, notas, usuario, createdAt, synced) |
+| `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, proveedorId, tipo, numeroFactura, importeTotal, tienda, notas, usuario, createdAt, estadoFacturacion, contabiliza, facturaRelacionadaId, albaranesRelacionados, synced) |
 | `hcarmen_ventas` | Array de ventas diarias (campos: syncId, fecha, tienda, efectivo, tarjeta, total, notas, usuario, createdAt, synced) |
 | `hcarmen_gastos` | Array de gastos manuales (campos: syncId, fecha, concepto, categoria, importe, tienda, notas, usuario, createdAt, synced) |
-| `hcarmen_proveedores` | Array de proveedores (BD local) |
+| `hcarmen_proveedores` | Array de proveedores (incluye `modoFacturacion`, `diasMaxFactura`, `toleranciaFactura`) |
 | `hcarmen_session` | Sesion activa (usuario + expiracion) |
 | `hcarmen_log` | Array de entradas de actividad (max 300 locales; se sincroniza con Sheet tab Log) |
 | `hcarmen_api_usage` | Objeto `{ "YYYY-MM": N }` con contador de llamadas OCR por mes (local) |
@@ -69,6 +70,18 @@ Las facturas/albaranes se guardan con dos referencias:
 Los registros antiguos que no tengan `proveedorId` siguen resolviendose por coincidencia normalizada de nombre (`proveedor` vs `razonSocial`). Al eliminar un proveedor, la app reasigna todas las facturas que coincidan por `proveedorId` o por nombre, y actualiza ambos campos (`proveedor` y `proveedorId`) antes de borrar el proveedor.
 
 `createdAt` registra cuando se guardo el registro en la app. La fecha `fecha` sigue siendo la fecha del documento, venta o gasto, y es la que se usa para resumenes y calendario.
+
+## Control de facturacion
+
+Cada proveedor puede tener un `modoFacturacion`:
+
+- `pago_inmediato`: el albaran cuenta como coste desde el registro.
+- `factura_unitaria`: el albaran queda pendiente hasta recibir factura.
+- `factura_mensual`: varios albaranes quedan pendientes hasta una factura agrupada.
+- `solo_factura`: los albaranes no se contabilizan.
+- `revisar`: modo conservador para proveedores sin configurar.
+
+Los documentos nuevos guardan `estadoFacturacion` y `contabiliza`. Los resumenes y estadisticas suman solo documentos contabilizables. Los documentos antiguos sin esos campos se siguen contabilizando para no alterar historicos sin una migracion revisada.
 
 ## Schema de Google Sheets
 
@@ -87,6 +100,10 @@ Los registros antiguos que no tengan `proveedorId` siguen resolviendose por coin
 | I | 8 | usuario |
 | J | 9 | proveedorId (recomendado) |
 | K | 10 | createdAt (recomendado) |
+| L | 11 | estadoFacturacion (recomendado) |
+| M | 12 | contabiliza (recomendado) |
+| N | 13 | facturaRelacionadaId (recomendado) |
+| O | 14 | albaranesRelacionados (recomendado) |
 
 ### Tab `Ventas` (7 columnas + recomendadas)
 
@@ -152,11 +169,11 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `getProveedores` | GET | Devuelve `{ proveedores: [...] }` |
 | `getApiUsage` | GET | Uso de Claude API por mes |
 | `testApi` | GET | Test de conectividad con Claude |
-| `addFactura` | GET/POST | Upsert por `syncId` en tab Facturas (sobreescribe si existe, inserta si no); el frontend envia tambien `proveedorId` y `createdAt` |
+| `addFactura` | GET/POST | Upsert por `syncId` en tab Facturas (sobreescribe si existe, inserta si no); el frontend envia tambien `proveedorId`, `createdAt`, `estadoFacturacion`, `contabiliza`, `facturaRelacionadaId` y `albaranesRelacionados` |
 | `addVenta` | GET/POST | Añade o actualiza fila en tab Ventas; el frontend envia `usuario` y `createdAt` |
 | `addGasto` | GET/POST | Añade fila en tab Gastos_Manual; el frontend envia `usuario` y `createdAt` |
 | `deleteRegistro` | GET/POST | Borra por syncId en Facturas/Ventas/Gastos |
-| `saveProveedor` | GET/POST | Crea o edita proveedor (flag `isEdit`) |
+| `saveProveedor` | GET/POST | Crea o edita proveedor (flag `isEdit`); el frontend envia tambien modo y parametros de facturacion |
 | `deleteProveedor` | GET/POST | Borra proveedor por id |
 | `addLog` | GET/POST | Añade entrada en tab Log |
 | `analizarFoto` | POST no-cors | OCR con Claude API, resultado en PropertiesService |
@@ -205,6 +222,7 @@ La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del
 
 | Versión | Cambios principales |
 |---|---|
+| v1.9.0 | Control inicial de facturacion: modo por proveedor, albaranes pendientes y costes solo contabilizables |
 | v1.8.0 | OCR tambien en Gastos Manuales con relleno de concepto, importe, fecha y categoria sugerida |
 | v1.7.0 | `proveedorId` estable en documentos, `createdAt` en registros e historial con vista calendario mensual/semanal |
 | v1.6.0 | Detección de duplicados en facturas (×2 comprobaciones) y gastos; reasignación de docs al borrar proveedor |
