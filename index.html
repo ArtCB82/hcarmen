@@ -2302,7 +2302,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.10.2';
+const APP_VERSION = 'v1.10.3';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 const MODOS_FACTURACION = {
   revisar: 'Revisar manualmente',
@@ -2322,6 +2322,9 @@ let _paginasBase64 = [];
 let ocrContext = 'factura';
 let mesActual = new Date();
 let mesActualProv = new Date();
+let syncTimer = null;
+let lastSheetPullAt = 0;
+let sheetPullInProgress = false;
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ── REPARTO DE GASTOS COMUNES ──
@@ -2460,6 +2463,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Cargar datos en background igualmente
     cargarDatosDesdeSheet();
   }
+  iniciarSyncPeriodico();
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && usuarioActual) sincronizarAhora({ force: true });
+});
+
+window.addEventListener('focus', () => {
+  if (usuarioActual) sincronizarAhora();
 });
 
 // ── SELECCIÓN TIENDA ──
@@ -3836,8 +3848,8 @@ async function syncData(action, payload) {
   try {
     const datos = JSON.stringify({action, ...payload});
     const encoded = encodeURIComponent(datos);
-    const url = APPS_SCRIPT_URL + '?method=post&data=' + encoded;
-    const res = await fetch(url, { method: 'GET', mode: 'cors' });
+    const url = APPS_SCRIPT_URL + '?method=post&data=' + encoded + '&_ts=' + Date.now();
+    const res = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
     const result = await res.json();
     console.log('[SYNC] Respuesta:', result);
     return result.success === true;
@@ -3850,7 +3862,9 @@ async function syncData(action, payload) {
 // Cargar datos desde Google Sheets (el Sheet manda — sincronización bidireccional)
 async function cargarDatosDesdeSheet() {
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll', { method: 'GET', mode: 'cors' });
+    if (sheetPullInProgress) return;
+    sheetPullInProgress = true;
+    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll&_ts=' + Date.now(), { method: 'GET', mode: 'cors', cache: 'no-store' });
     if (!res.ok) return;
     const data = await res.json();
     if (data.error) { console.warn('[SYNC] Error del Sheet:', data.error); return; }
@@ -3940,10 +3954,42 @@ async function cargarDatosDesdeSheet() {
     }
 
     console.log('[SYNC] Sincronizacion completa con Google Sheets');
+    lastSheetPullAt = Date.now();
     updateSyncBar();
   } catch(e) {
     console.warn('[SYNC] Modo offline:', e.message);
+  } finally {
+    sheetPullInProgress = false;
   }
+}
+
+async function sincronizarAhora(opts) {
+  const opciones = opts || {};
+  const minInterval = opciones.force ? 0 : 12000;
+  if (Date.now() - lastSheetPullAt < minInterval || sheetPullInProgress) return;
+  await cargarDatosDesdeSheet();
+  await reintentarPendientes();
+  refrescarPantallaActiva();
+}
+
+function iniciarSyncPeriodico() {
+  if (syncTimer) clearInterval(syncTimer);
+  syncTimer = setInterval(() => {
+    if (!document.hidden && usuarioActual) sincronizarAhora();
+  }, 30000);
+}
+
+function refrescarPantallaActiva() {
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  const id = active.id;
+  if (id === 'screen-historial' && typeof renderHistorial === 'function') renderHistorial('todo');
+  else if (id === 'screen-proveedores' && typeof renderProveedores === 'function') renderProveedores();
+  else if (id === 'screen-gestion-proveedores' && typeof renderListaProveedores === 'function') renderListaProveedores(document.getElementById('buscadorProveedores')?.value || '');
+  else if (id === 'screen-albaranes' && typeof renderAlbaranes === 'function') renderAlbaranes('pendientes');
+  else if (id === 'screen-calendario' && typeof renderCalendario === 'function') renderCalendario();
+  else if (id === 'screen-stats-compras' && typeof renderStatsCompras === 'function') renderStatsCompras();
+  else if (id === 'screen-stats-ventas' && typeof renderStats === 'function') renderStats();
 }
 
 // Reintentar sincronización de pendientes

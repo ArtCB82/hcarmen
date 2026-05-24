@@ -104,6 +104,7 @@
 ### Sync
 - [x] Reintento de proveedores pendientes en `reintentarPendientes()` (antes solo facturas/ventas/gastos)
 - [x] Mapeo explícito de campos de proveedor al cargar desde Sheet (tolerante a variantes de nombre de columna)
+- [x] Lecturas anti-cache (`cache:no-store` + `_ts`) y sincronizacion periodica/en foco entre dispositivos
 
 ### Proveedores — detalle y navegación
 - [x] Click en proveedor (pantalla **Compras por Proveedor**) abre bottom sheet con datos de BD + facturas de ese mes; botón "Ver todos" si hay docs de otros meses

@@ -225,6 +225,7 @@ La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del
 
 | Versión | Cambios principales |
 |---|---|
+| v1.10.3 | Sincronizacion mas rapida: no-store, cache busting, refresco al enfocar y pull periodico |
 | v1.10.2 | Proveedores: se elimina deduplicacion silenciosa local y se prepara fusion real mediante Apps Script |
 | v1.10.1 | Prevencion de proveedores duplicados por CIF/nombre al guardar |
 | v1.10.0 | Vinculacion asistida de facturas con albaranes pendientes y sincronizacion de relaciones |
