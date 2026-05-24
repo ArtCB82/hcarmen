@@ -175,6 +175,7 @@ Si hay candidatos, abre el `#modalCotejoProveedor` con botones de selección y p
 | `deleteRegistro` | GET/POST | Borra por syncId en Facturas/Ventas/Gastos |
 | `saveProveedor` | GET/POST | Crea o edita proveedor (flag `isEdit`); el frontend envia tambien modo y parametros de facturacion |
 | `deleteProveedor` | GET/POST | Borra proveedor por id |
+| `mergeDuplicateProveedores` | GET/POST | Fusiona proveedores duplicados por CIF/nombre, reasigna documentos y borra filas sobrantes |
 | `addLog` | GET/POST | Añade entrada en tab Log |
 | `analizarFoto` | POST no-cors | OCR con Claude API, resultado en PropertiesService |
 | `getOcrResult` | GET | Polling: devuelve resultado del OCR por `tempId` (`{ success, datos }` o `{ pending: true }`) |
@@ -222,7 +223,8 @@ La constante `APP_VERSION` (en la sección `// ── CONFIGURACIÓN ──` del
 
 | Versión | Cambios principales |
 |---|---|
-| v1.10.1 | Prevencion de proveedores duplicados por CIF/nombre y deduplicacion local al cargar desde Sheet |
+| v1.10.2 | Proveedores: se elimina deduplicacion silenciosa local y se prepara fusion real mediante Apps Script |
+| v1.10.1 | Prevencion de proveedores duplicados por CIF/nombre al guardar |
 | v1.10.0 | Vinculacion asistida de facturas con albaranes pendientes y sincronizacion de relaciones |
 | v1.9.0 | Control inicial de facturacion: modo por proveedor, albaranes pendientes y costes solo contabilizables |
 | v1.8.0 | OCR tambien en Gastos Manuales con relleno de concepto, importe, fecha y categoria sugerida |

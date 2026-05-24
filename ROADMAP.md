@@ -68,7 +68,8 @@
 - [x] Si alguna sincronización falla, se muestra el conteo de errores y el proveedor NO se elimina (consistencia)
 - [x] Si no hay facturas asociadas, flujo de borrado simple sin cambios
 - [x] Fix: documentos vinculados a proveedor por `proveedorId` estable y fallback por nombre para datos antiguos; al reasignar se actualizan `proveedor` y `proveedorId`
-- [x] Fix: proveedores duplicados se previenen al guardar y se deduplican localmente por CIF o nombre normalizado al cargar desde Sheet
+- [x] Fix: proveedores duplicados se previenen al guardar por CIF o nombre normalizado
+- [x] Accion admin preparada para fusion real de proveedores duplicados desde Apps Script
 
 ### Historial y calendario
 - [x] Campo `createdAt` en facturas, ventas y gastos para registrar cuando se guardo cada registro

@@ -1233,7 +1233,21 @@
     </div>
 
     <div class="admin-section">
-      <div class="section-label">Configuración de reparto</div>
+      <div class="section-label">Mantenimiento</div>
+      <div class="admin-card">
+        <div class="admin-card-title">Proveedores duplicados</div>
+        <p style="font-size:13px;color:var(--gris);line-height:1.6;margin:0 0 12px">
+          Fusiona proveedores repetidos por CIF o por nombre normalizado, reasigna documentos al proveedor principal y borra las filas duplicadas.
+        </p>
+        <div id="adminMergeProveedoresStatus" style="font-size:13px;color:var(--gris);margin-bottom:12px"></div>
+        <button onclick="fusionarProveedoresDuplicados()" style="width:100%;background:var(--verde);border:none;color:white;border-radius:12px;padding:13px;font-size:14px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif">
+          Fusionar proveedores duplicados
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-section">
+      <div class="section-label">ConfiguraciÃ³n de reparto</div>
       <div class="admin-card">
         <div class="admin-card-title">Reparto de gastos comunes entre tiendas</div>
         <p style="font-size:12px;color:var(--gris);margin-bottom:14px;line-height:1.5">
@@ -2288,7 +2302,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.10.1';
+const APP_VERSION = 'v1.10.2';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 const MODOS_FACTURACION = {
   revisar: 'Revisar manualmente',
@@ -2829,11 +2843,15 @@ function _similitudProv(a, b) {
 }
 
 function _candidatosProveedor(texto, provs) {
-  return provs
+  const candidatos = provs
     .map(p => ({ p, score: _similitudProv(texto, p.razonSocial) }))
     .filter(x => x.score >= 0.45)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
+    .sort((a, b) => b.score - a.score);
+  const unicos = [];
+  candidatos.forEach(c => {
+    if (!unicos.some(x => proveedoresEquivalentes(x.p, c.p))) unicos.push(c);
+  });
+  return unicos.slice(0, 5);
 }
 
 // ── COTEJO MODAL ──
@@ -2995,7 +3013,7 @@ function setStorage(key, data) {
 let proveedorSeleccionado = null;
 
 function getProveedores() {
-  try { return deduplicarProveedores(JSON.parse(localStorage.getItem('hcarmen_proveedores')) || []); }
+  try { return JSON.parse(localStorage.getItem('hcarmen_proveedores')) || []; }
   catch { return []; }
 }
 
@@ -3024,11 +3042,6 @@ function proveedoresEquivalentes(a, b) {
   return Boolean(nombreA && nombreA === nombreB);
 }
 
-function proveedorScoreDatos(p) {
-  const campos = ['razonSocial','cif','telefono','email','web','direccion','contactoNombre','contactoTel','contactoEmail','iban','modoFacturacion','diasMaxFactura','toleranciaFactura','notas'];
-  return campos.reduce((n, k) => n + (p && p[k] ? 1 : 0), 0);
-}
-
 function fusionarProveedorDatos(base, extra) {
   const out = { ...base };
   ['razonSocial','cif','telefono','email','web','direccion','contactoNombre','contactoTel','contactoEmail','iban','modoFacturacion','diasMaxFactura','toleranciaFactura','notas'].forEach(k => {
@@ -3036,42 +3049,6 @@ function fusionarProveedorDatos(base, extra) {
   });
   out.synced = Boolean(base.synced && (!extra || extra.synced));
   return out;
-}
-
-function deduplicarProveedores(lista, opts) {
-  const opciones = opts || {};
-  const dedupe = [];
-  const idCanonico = new Map();
-  (lista || []).forEach(p => {
-    if (!p || !p.id || !proveedorNombreClave(p)) return;
-    const idx = dedupe.findIndex(actual => proveedoresEquivalentes(actual, p));
-    if (idx === -1) {
-      dedupe.push({ ...p });
-      idCanonico.set(p.id, p.id);
-      return;
-    }
-    const actual = dedupe[idx];
-    const preferirNuevo = proveedorScoreDatos(p) > proveedorScoreDatos(actual) && !actual.synced;
-    const canon = preferirNuevo ? { ...p } : fusionarProveedorDatos(actual, p);
-    const descartado = preferirNuevo ? actual : p;
-    dedupe[idx] = canon;
-    idCanonico.set(actual.id, canon.id);
-    idCanonico.set(p.id, canon.id);
-    if (descartado.id !== canon.id) idCanonico.set(descartado.id, canon.id);
-  });
-
-  if (opciones.migrarDocumentos && idCanonico.size) {
-    const proveedoresById = new Map(dedupe.map(p => [p.id, p]));
-    const docs = getStorage('hcarmen_facturas').map(f => {
-      const canonId = idCanonico.get(f.proveedorId);
-      const canon = canonId ? proveedoresById.get(canonId) : null;
-      return canon && canonId !== f.proveedorId
-        ? { ...f, proveedorId: canonId, proveedor: canon.razonSocial || f.proveedor, synced: false }
-        : f;
-    });
-    setStorage('hcarmen_facturas', docs);
-  }
-  return dedupe;
 }
 
 function buscarProveedorDuplicado(prov, lista, excluirId) {
@@ -3310,7 +3287,7 @@ async function guardarProveedor() {
   } else {
     provs.push(prov);
   }
-  setStorage('hcarmen_proveedores', deduplicarProveedores(provs, { migrarDocumentos: true }));
+  setStorage('hcarmen_proveedores', provs);
   const ok = await syncData('saveProveedor', { proveedor: prov, isEdit: syncComoEdicion });
   if (ok) {
     setStorage('hcarmen_proveedores', getStorage('hcarmen_proveedores').map(p => p.id === prov.id ? {...p, synced:true} : p));
@@ -3959,7 +3936,7 @@ async function cargarDatosDesdeSheet() {
       }));
       const sheetIds = new Set(provSheet.map(p => p.id));
       const soloLocales = provLocal.filter(p => !p.synced && !sheetIds.has(p.id));
-      setStorage('hcarmen_proveedores', deduplicarProveedores([...provSheet, ...soloLocales], { migrarDocumentos: true }));
+      setStorage('hcarmen_proveedores', [...provSheet, ...soloLocales]);
     }
 
     console.log('[SYNC] Sincronizacion completa con Google Sheets');
@@ -5053,6 +5030,24 @@ async function testApiClaude() {
 
 
 // ── PIN CON TECLADO FÍSICO ──
+async function fusionarProveedoresDuplicados() {
+  const status = document.getElementById('adminMergeProveedoresStatus');
+  if (!confirm('Esta accion fusionara proveedores duplicados en Google Sheets y reasignara documentos. Hazlo solo despues de actualizar Apps Script.')) return;
+  if (status) status.innerHTML = 'Fusionando proveedores...';
+  showLoading('Fusionando proveedores...');
+  try {
+    const ok = await syncData('mergeDuplicateProveedores', {});
+    await cargarDatosDesdeSheet();
+    hideLoading();
+    if (status) status.innerHTML = ok ? 'Fusion completada. Datos recargados.' : 'No se pudo fusionar. Revisa que Apps Script tenga la accion mergeDuplicateProveedores.';
+    showToast(ok ? 'Proveedores fusionados' : 'No se pudo fusionar proveedores', ok ? 'ok' : 'error');
+  } catch(e) {
+    hideLoading();
+    if (status) status.innerHTML = 'Error: ' + (e && e.message ? e.message : e);
+    showToast('Error fusionando proveedores', 'error');
+  }
+}
+
 function pinKeyboard(e) {
   if (e.key >= '0' && e.key <= '9') { pinKey(e.key); e.preventDefault(); }
   else if (e.key === 'Backspace') { pinBorrar(); e.preventDefault(); }
