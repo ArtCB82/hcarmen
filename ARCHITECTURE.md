@@ -14,6 +14,8 @@ Google Apps Script (doGet / doPost)
     └── Llama a Claude API (OCR)
 ```
 
+El codigo fuente del backend de Apps Script esta versionado en `apps-script/Code.gs`. El despliegue sigue siendo manual: copiar ese archivo al editor de Google Apps Script, guardar e implementar una nueva version.
+
 ## Frontend
 
 - **Un único archivo**: `index.html` contiene todo el HTML, CSS y JS.

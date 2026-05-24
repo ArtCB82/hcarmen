@@ -36,6 +36,7 @@
 - [x] `saveProveedor` con soporte para crear y editar (flag `isEdit`)
 - [x] `deleteProveedor` para borrar filas del Sheet tab `Proveedores`
 - [x] `getProveedores` devuelve `{ proveedores: [...] }` — el frontend maneja ambos formatos
+- [x] Codigo de Apps Script versionado en `apps-script/Code.gs`
 
 ### OCR — Cotejo inteligente de proveedor
 - [x] Distancia Levenshtein normalizada para comparar el texto OCR contra la BD de proveedores
