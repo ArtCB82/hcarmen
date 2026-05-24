@@ -75,6 +75,7 @@
 ### Historial y calendario
 - [x] Campo `createdAt` en facturas, ventas y gastos para registrar cuando se guardo cada registro
 - [x] Boton de vista calendario desde Historial
+- [x] Buscador en Historial por proveedor, concepto, notas, fecha, importe, usuario y referencia
 - [x] Calendario mensual con marcas V/F/G para ventas, facturas y gastos por fecha del documento
 - [x] Vista semanal con detalle diario e importes
 

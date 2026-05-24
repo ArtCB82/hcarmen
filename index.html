@@ -2083,6 +2083,12 @@
     <button class="btn-calendar" onclick="navTo('screen-calendario')">Vista calendario</button>
   </div>
 
+  <div style="padding:12px 20px 4px">
+    <input type="search" class="field-input" id="historialBuscador"
+           placeholder="Buscar por proveedor, concepto, nota, fecha, importe..."
+           oninput="renderHistorial(historialFiltroActual)">
+  </div>
+
   <div class="historial-filtros">
     <button class="filtro-btn active" onclick="filtrarHistorial('todo', this)">Todo</button>
     <button class="filtro-btn" onclick="filtrarHistorial('venta', this)">Ventas</button>
@@ -2302,7 +2308,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.10.3';
+const APP_VERSION = 'v1.10.4';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 const MODOS_FACTURACION = {
   revisar: 'Revisar manualmente',
@@ -2325,6 +2331,7 @@ let mesActualProv = new Date();
 let syncTimer = null;
 let lastSheetPullAt = 0;
 let sheetPullInProgress = false;
+let historialFiltroActual = 'todo';
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ── REPARTO DE GASTOS COMUNES ──
@@ -3983,7 +3990,7 @@ function refrescarPantallaActiva() {
   const active = document.querySelector('.screen.active');
   if (!active) return;
   const id = active.id;
-  if (id === 'screen-historial' && typeof renderHistorial === 'function') renderHistorial('todo');
+  if (id === 'screen-historial' && typeof renderHistorial === 'function') renderHistorial(historialFiltroActual);
   else if (id === 'screen-proveedores' && typeof renderProveedores === 'function') renderProveedores();
   else if (id === 'screen-gestion-proveedores' && typeof renderListaProveedores === 'function') renderListaProveedores(document.getElementById('buscadorProveedores')?.value || '');
   else if (id === 'screen-albaranes' && typeof renderAlbaranes === 'function') renderAlbaranes('pendientes');
@@ -4060,7 +4067,36 @@ function updateSyncBar() {
 }
 
 // ── HISTORIAL ──
+function textoBusquedaHistorial(item) {
+  const tienda = item.tienda === 'tienda1' ? 'San Asturio' : item.tienda === 'tienda2' ? 'Juan de Guzman' : 'Ambas';
+  const partes = [
+    item._tipo,
+    item.fecha,
+    formatFecha(item.fecha),
+    tienda,
+    item.proveedor,
+    item.concepto,
+    item.numeroFactura,
+    item.notas,
+    item.usuario,
+    item.categoria,
+    item.tipo,
+    item.importeTotal,
+    item.importe,
+    item.total,
+    item.syncId
+  ];
+  return normalizarTexto(partes.filter(v => v !== undefined && v !== null).join(' '));
+}
+
+function coincideBusquedaHistorial(item, query) {
+  if (!query) return true;
+  const texto = textoBusquedaHistorial(item);
+  return normalizarTexto(query).split(/\s+/).filter(Boolean).every(term => texto.includes(term));
+}
+
 function renderHistorial(filtro) {
+  historialFiltroActual = filtro || 'todo';
   const facturas = getStorage('hcarmen_facturas').map(f => ({...f, _tipo:'factura'}));
   const ventas = getStorage('hcarmen_ventas').map(v => ({...v, _tipo:'venta'}));
   const gastos = getStorage('hcarmen_gastos').map(g => ({...g, _tipo:'gasto'}));
@@ -4072,9 +4108,12 @@ function renderHistorial(filtro) {
   else if (filtro === 'tienda1') todos = todos.filter(x => x.tienda==='tienda1');
   else if (filtro === 'tienda2') todos = todos.filter(x => x.tienda==='tienda2');
 
+  const query = document.getElementById('historialBuscador')?.value || '';
+  if (query.trim()) todos = todos.filter(item => coincideBusquedaHistorial(item, query));
+
   const lista = document.getElementById('historialLista');
   if (!todos.length) {
-    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>Sin registros</h3><p>Aún no hay datos para este filtro.</p></div>`;
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📭</div><h3>Sin registros</h3><p>No hay datos que coincidan con el filtro o la busqueda.</p></div>`;
     return;
   }
 
@@ -4150,14 +4189,15 @@ async function borrarRegistro(tipo, id, btn) {
   registrarLog('BORRADO', tipo + ' eliminado (id:' + id + ')');
   showToast('Registro eliminado', 'ok');
   // Refrescar historial con el filtro activo
-  const activoBtn = document.querySelector('.filtro-btn.active');
+  const activoBtn = document.querySelector('#screen-historial .filtro-btn.active');
   const filtroActivo = activoBtn ? activoBtn.textContent.trim() : 'todo';
   renderHistorial(filtroActivo === 'Todo' ? 'todo' : filtroActivo === 'Ventas' ? 'venta' : filtroActivo === 'Facturas' ? 'factura' : filtroActivo === 'Gastos' ? 'gasto' : 'todo');
   updateSyncBar();
 }
 
 function filtrarHistorial(filtro, btn) {
-  document.querySelectorAll('.filtro-btn').forEach(b => b.classList.remove('active'));
+  historialFiltroActual = filtro;
+  document.querySelectorAll('#screen-historial .filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderHistorial(filtro);
 }
