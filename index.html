@@ -1306,9 +1306,9 @@
   <div class="section-label">Registrar</div>
   <div class="menu-grid">
     <button class="menu-btn accent-orange" onclick="navTo('screen-factura')">
-      <span class="btn-icon">📷</span>
-      <span class="btn-label">Escanear Factura</span>
-      <span class="btn-desc">Foto de albarán o ticket</span>
+      <span class="btn-icon">&#129534;</span>
+      <span class="btn-label">Factura / Albar&aacute;n</span>
+      <span class="btn-desc">Foto, PDF o registro</span>
     </button>
     <button class="menu-btn accent" onclick="navTo('screen-ventas')">
       <span class="btn-icon">💰</span>
@@ -1318,9 +1318,9 @@
   </div>
   <div class="menu-grid single">
     <button class="menu-btn" onclick="navTo('screen-gasto')">
-      <span class="btn-icon">🧾</span>
-      <span class="btn-label">Gasto Manual</span>
-      <span class="btn-desc">Alquiler, gasolina, suministros…</span>
+      <span class="btn-icon">&#128179;</span>
+      <span class="btn-label">Registrar Gasto</span>
+      <span class="btn-desc">Foto, PDF o efectivo</span>
     </button>
   </div>
 
@@ -1378,8 +1378,8 @@
     <div class="header-top">
       <button class="btn-back" onclick="navBack()">←</button>
       <div>
-        <div class="header-title">Escanear Factura</div>
-        <div class="header-subtitle">Foto al albarán o ticket</div>
+        <div class="header-title">Factura / Albar&aacute;n</div>
+        <div class="header-subtitle">Reconocimiento por foto, PDF o registro</div>
       </div>
     </div>
   </div>
@@ -1587,8 +1587,8 @@
     <div class="header-top">
       <button class="btn-back" onclick="navBack()">←</button>
       <div>
-        <div class="header-title">Gasto Manual</div>
-        <div class="header-subtitle">Sin factura o en efectivo</div>
+        <div class="header-title">Registrar Gasto</div>
+        <div class="header-subtitle">Reconocimiento por foto, PDF o entrada manual</div>
       </div>
     </div>
   </div>
@@ -2135,6 +2135,12 @@
     </div>
   </div>
 
+  <div style="padding:12px 20px 4px">
+    <input type="search" class="field-input" id="albaranesBuscador"
+           placeholder="Buscar por proveedor, numero, fecha, importe, estado..."
+           oninput="renderAlbaranes(albaranesFiltroActual)">
+  </div>
+
   <div class="historial-filtros">
     <button class="filtro-btn active" onclick="filtrarAlbaranes('pendientes', this)">Pendientes</button>
     <button class="filtro-btn" onclick="filtrarAlbaranes('facturados', this)">Facturados</button>
@@ -2332,6 +2338,7 @@ let syncTimer = null;
 let lastSheetPullAt = 0;
 let sheetPullInProgress = false;
 let historialFiltroActual = 'todo';
+let albaranesFiltroActual = 'pendientes';
 const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
 // ── REPARTO DE GASTOS COMUNES ──
@@ -4202,7 +4209,31 @@ function filtrarHistorial(filtro, btn) {
   renderHistorial(filtro);
 }
 
+function textoBusquedaAlbaran(doc) {
+  const prov = proveedorDeDocumento(doc);
+  return normalizarTexto([
+    doc.proveedor,
+    prov && prov.razonSocial,
+    doc.numeroFactura,
+    doc.fecha,
+    formatFecha(doc.fecha),
+    doc.importeTotal,
+    doc.notas,
+    doc.estadoFacturacion,
+    labelEstadoFacturacion(doc),
+    MODOS_FACTURACION[modoFacturacionProveedor(prov)],
+    doc.tienda === 'tienda1' ? 'San Asturio' : doc.tienda === 'tienda2' ? 'Juan de Guzman' : 'Ambas'
+  ].filter(v => v !== undefined && v !== null).join(' '));
+}
+
+function coincideBusquedaAlbaran(doc, query) {
+  if (!query) return true;
+  const texto = textoBusquedaAlbaran(doc);
+  return normalizarTexto(query).split(/\s+/).filter(Boolean).every(term => texto.includes(term));
+}
+
 function renderAlbaranes(filtro) {
+  albaranesFiltroActual = filtro || 'pendientes';
   let docs = getStorage('hcarmen_facturas')
     .filter(f => f.tipo === 'albaran')
     .sort((a,b) => (b.fecha || '').localeCompare(a.fecha || ''));
@@ -4211,10 +4242,13 @@ function renderAlbaranes(filtro) {
   else if (filtro === 'facturados') docs = docs.filter(f => f.estadoFacturacion === 'facturado');
   else if (filtro === 'contabilizables') docs = docs.filter(documentoContabiliza);
 
+  const query = document.getElementById('albaranesBuscador')?.value || '';
+  if (query.trim()) docs = docs.filter(doc => coincideBusquedaAlbaran(doc, query));
+
   const lista = document.getElementById('albaranesLista');
   if (!lista) return;
   if (!docs.length) {
-    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><h3>Sin albaranes</h3><p>No hay documentos para este filtro.</p></div>`;
+    lista.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><h3>Sin albaranes</h3><p>No hay documentos que coincidan con el filtro o la busqueda.</p></div>`;
     return;
   }
 
@@ -4254,6 +4288,7 @@ function renderAlbaranes(filtro) {
 }
 
 function filtrarAlbaranes(filtro, btn) {
+  albaranesFiltroActual = filtro;
   document.querySelectorAll('#screen-albaranes .filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderAlbaranes(filtro);
@@ -4267,7 +4302,7 @@ function toggleContabilizaAlbaran(id) {
   });
   setStorage('hcarmen_facturas', docs);
   reintentarPendientes();
-  renderAlbaranes(document.querySelector('#screen-albaranes .filtro-btn.active')?.textContent.trim() === 'Todos' ? 'todos' : document.querySelector('#screen-albaranes .filtro-btn.active')?.textContent.trim() === 'Facturados' ? 'facturados' : document.querySelector('#screen-albaranes .filtro-btn.active')?.textContent.trim() === 'Contabilizables' ? 'contabilizables' : 'pendientes');
+  renderAlbaranes(albaranesFiltroActual);
   updateSyncBar();
 }
 
