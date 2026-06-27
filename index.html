@@ -553,15 +553,24 @@
     gap: 3px;
   }
   .cal-mark {
-    width: 18px;
+    min-width: 18px;
     height: 18px;
     border-radius: 6px;
+    padding: 0 5px;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 2px;
     color: white;
     font-size: 10px;
     font-weight: 900;
+    line-height: 1;
+  }
+  .cal-mark:not(.has-count) { width: 18px; padding: 0; }
+  .cal-mark-count {
+    font-size: 9px;
+    font-weight: 900;
+    opacity: 0.92;
   }
   .cal-mark.venta { background: var(--verde); }
   .cal-mark.factura { background: var(--naranja); }
@@ -4347,6 +4356,14 @@ function resumenDia(fecha) {
   };
 }
 
+function marcaCalendario(tipo, letra, cantidad) {
+  if (!cantidad) return '';
+  const labels = { venta: 'ventas', factura: 'facturas', gasto: 'gastos' };
+  const cls = cantidad > 1 ? ' has-count' : '';
+  const count = cantidad > 1 ? `<span class="cal-mark-count">${cantidad}</span>` : '';
+  return `<span class="cal-mark ${tipo}${cls}" title="${cantidad} ${labels[tipo] || 'registros'}">${letra}${count}</span>`;
+}
+
 function setCalendarioVista(vista) {
   calendarioVista = vista;
   renderCalendario();
@@ -4376,9 +4393,9 @@ function renderCalendario() {
     const key = dateKey(d);
     const r = resumenDia(key);
     const marks = [
-      r.venta ? `<span class="cal-mark venta">V</span>` : '',
-      r.factura ? `<span class="cal-mark factura">F</span>` : '',
-      r.gasto ? `<span class="cal-mark gasto">G</span>` : ''
+      marcaCalendario('venta', 'V', r.venta),
+      marcaCalendario('factura', 'F', r.factura),
+      marcaCalendario('gasto', 'G', r.gasto)
     ].join('');
     return `<div class="calendar-day ${d.getMonth() !== m ? 'muted' : ''} ${key === hoyKey ? 'today' : ''}">
       <div class="calendar-day-num">${d.getDate()}</div>
