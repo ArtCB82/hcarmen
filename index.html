@@ -1286,7 +1286,7 @@
     </div>
 
     <div class="admin-section">
-      <div class="section-label">ConfiguraciÃ³n de reparto</div>
+      <div class="section-label">Configuración de reparto</div>
       <div class="admin-card">
         <div class="admin-card-title">Reparto de gastos comunes entre tiendas</div>
         <p style="font-size:12px;color:var(--gris);margin-bottom:14px;line-height:1.5">
@@ -1557,7 +1557,7 @@
       </div>
 
       <div class="field-group">
-        <div class="field-label">Pagos a proveedores desde caja (â‚¬)</div>
+        <div class="field-label">Pagos a proveedores desde caja (€)</div>
         <input type="number" class="field-input" id="ventaPagosCaja" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
       </div>
 
@@ -2115,7 +2115,7 @@
 <!-- MODAL DETALLE DIA CALENDARIO -->
 <div class="modal-overlay" id="modalDiaCalendario" style="display:none">
   <div class="modal-box" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-title" id="modalDiaTitulo">Registros del dÃ­a</div>
+    <div class="modal-title" id="modalDiaTitulo">Registros del dia</div>
     <div class="modal-subtitle" id="modalDiaResumen"></div>
     <div id="modalDiaLista"></div>
     <div class="modal-btns">
@@ -2609,7 +2609,7 @@ function calcTotal() {
     if (!pagosShow) {
       const row = document.createElement('div');
       row.className = 'caja-fila';
-      row.innerHTML = '<span>Pagos proveedores</span><span id="cajaPagosShow">0,00 â‚¬</span>';
+      row.innerHTML = '<span>Pagos proveedores</span><span id="cajaPagosShow">0,00 €</span>';
       document.getElementById('cajaTotalEsperado').closest('.caja-fila').before(row);
       pagosShow = document.getElementById('cajaPagosShow');
     }
@@ -3112,16 +3112,16 @@ function nowIso() {
 function analizarFechaSospechosa(fecha) {
   if (!fecha) return null;
   const d = new Date(fecha + 'T00:00:00');
-  if (isNaN(d.getTime())) return 'La fecha no parece vÃ¡lida.';
+  if (isNaN(d.getTime())) return 'La fecha no parece valida.';
 
   const hoy = new Date();
   const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
   const diasDiff = Math.round((d - hoy0) / 86400000);
   const avisos = [];
 
-  if (diasDiff > 0) avisos.push('estÃ¡ en el futuro');
-  if (diasDiff < -100) avisos.push('tiene mÃ¡s de 3 meses de antigÃ¼edad');
-  if (d.getFullYear() !== hoy.getFullYear()) avisos.push('pertenece al aÃ±o ' + d.getFullYear());
+  if (diasDiff > 0) avisos.push('esta en el futuro');
+  if (diasDiff < -100) avisos.push('tiene mas de 3 meses de antiguedad');
+  if (d.getFullYear() !== hoy.getFullYear()) avisos.push('pertenece al ano ' + d.getFullYear());
 
   return avisos.length ? 'La fecha ' + formatFecha(fecha) + ' ' + avisos.join(' y ') + '.' : null;
 }
@@ -3130,8 +3130,8 @@ function confirmarFechaRegistro(fecha, tipo) {
   const aviso = analizarFechaSospechosa(fecha);
   if (!aviso) return true;
   return confirm(
-    'AtenciÃ³n: ' + aviso + '\n\n' +
-    'Puede ser un error de reconocimiento o de introducciÃ³n manual.\n\n' +
+    'Atencion: ' + aviso + '\n\n' +
+    'Puede ser un error de reconocimiento o de introduccion manual.\n\n' +
     'Aceptar: guardar igualmente.\n' +
     'Cancelar: volver para corregir la fecha.'
   );
@@ -4257,7 +4257,7 @@ function importeRegistro(item) {
 
 function tituloRegistro(item) {
   if (item._tipo === 'factura') return item.proveedor || 'Sin proveedor';
-  if (item._tipo === 'venta') return 'Ventas del dÃ­a';
+  if (item._tipo === 'venta') return 'Ventas del dia';
   return item.concepto || 'Gasto';
 }
 
@@ -4309,12 +4309,12 @@ function pintarRegistroResumen(item, opciones) {
   const tipo = item._tipo;
   const icono = tipo === 'venta' ? 'V' : tipo === 'factura' ? 'F' : 'G';
   const clase = tipo;
-  const tiendaTag = item.tienda === 'tienda1' ? 'S.Asturio' : item.tienda === 'tienda2' ? 'J.GuzmÃ¡n' : 'Ambas';
+  const tiendaTag = item.tienda === 'tienda1' ? 'S.Asturio' : item.tienda === 'tienda2' ? 'J.Guzman' : 'Ambas';
   const adminBtns = esAdminActual()
     ? '<button class="btn-small-edit" onclick="abrirEditarRegistro(\'' + tipo + '\',\'' + registroId(item) + '\')">Editar</button>'
     : '';
   const extra = tipo === 'factura'
-    ? '<div class="modal-record-meta">' + escapeHtml(item.tipo || 'factura') + (item.numeroFactura ? ' Â· NÂ° ' + escapeHtml(item.numeroFactura) : '') + '</div>'
+    ? '<div class="modal-record-meta">' + escapeHtml(item.tipo || 'factura') + (item.numeroFactura ? ' · N° ' + escapeHtml(item.numeroFactura) : '') + '</div>'
     : tipo === 'gasto'
       ? '<div class="modal-record-meta">' + escapeHtml(item.categoria || 'Otros') + '</div>'
       : '';
@@ -4322,7 +4322,7 @@ function pintarRegistroResumen(item, opciones) {
     '<span class="cal-mark ' + clase + '">' + icono + '</span>' +
     '<div class="modal-record-main">' +
       '<div class="modal-record-title">' + escapeHtml(tituloRegistro(item)) + '</div>' +
-      '<div class="modal-record-meta">' + formatFecha(item.fecha) + ' Â· ' + tiendaTag + (item.usuario ? ' Â· ' + escapeHtml(item.usuario) : '') + '</div>' +
+      '<div class="modal-record-meta">' + formatFecha(item.fecha) + ' · ' + tiendaTag + (item.usuario ? ' · ' + escapeHtml(item.usuario) : '') + '</div>' +
       extra +
       (item.notas ? '<div class="modal-record-meta">' + escapeHtml(item.notas) + '</div>' : '') +
     '</div>' +
@@ -4463,7 +4463,7 @@ function abrirDetalleDia(fecha) {
     resumen + ' · Ventas: ' + fmtEur(totalVentas) + ' · Costes: ' + fmtEur(totalCostes);
   document.getElementById('modalDiaLista').innerHTML = regs.length
     ? regs.map(r => pintarRegistroResumen(r)).join('')
-    : '<div style="text-align:center;color:var(--gris);padding:18px;font-size:14px">Sin registros en este dÃ­a</div>';
+    : '<div style="text-align:center;color:var(--gris);padding:18px;font-size:14px">Sin registros en este día</div>';
   document.getElementById('modalDiaCalendario').style.display = 'flex';
 }
 
@@ -4487,12 +4487,12 @@ function abrirEditarRegistro(tipo, id) {
   document.getElementById('editRegistroTipo').value = tipo;
   document.getElementById('editRegistroId').value = id;
   document.getElementById('modalEditarTitulo').textContent =
-    tipo === 'venta' ? 'Editar venta' : tipo === 'factura' ? 'Editar factura/albarÃ¡n' : 'Editar gasto';
+    tipo === 'venta' ? 'Editar venta' : tipo === 'factura' ? 'Editar factura/albarán' : 'Editar gasto';
 
   let html = '';
   const tiendaSelect = '<select class="field-select" id="editTienda">' +
     '<option value="tienda1"' + optionSelected('tienda1', item.tienda) + '>San Asturio</option>' +
-    '<option value="tienda2"' + optionSelected('tienda2', item.tienda) + '>Juan de GuzmÃ¡n</option>' +
+    '<option value="tienda2"' + optionSelected('tienda2', item.tienda) + '>Juan de Guzmán</option>' +
     (tipo === 'venta' ? '' : '<option value="ambas"' + optionSelected('ambas', item.tienda) + '>Ambas tiendas</option>') +
   '</select>';
 
@@ -4500,20 +4500,20 @@ function abrirEditarRegistro(tipo, id) {
   html += campoEdit('Tienda', tiendaSelect);
 
   if (tipo === 'venta') {
-    html += campoEdit('Total ventas (â‚¬)', '<input type="number" class="field-input" id="editTotal" step="0.01" min="0" value="' + (item.total || 0) + '">');
-    html += campoEdit('Tarjeta/datÃ¡fono (â‚¬)', '<input type="number" class="field-input" id="editTarjeta" step="0.01" min="0" value="' + (item.tarjeta || 0) + '">');
-    html += campoEdit('Pagos proveedores desde caja (â‚¬)', '<input type="number" class="field-input" id="editPagosCaja" step="0.01" min="0" value="' + (item.pagosCaja || 0) + '">');
+    html += campoEdit('Total ventas (€)', '<input type="number" class="field-input" id="editTotal" step="0.01" min="0" value="' + (item.total || 0) + '">');
+    html += campoEdit('Tarjeta/datáfono (€)', '<input type="number" class="field-input" id="editTarjeta" step="0.01" min="0" value="' + (item.tarjeta || 0) + '">');
+    html += campoEdit('Pagos proveedores desde caja (€)', '<input type="number" class="field-input" id="editPagosCaja" step="0.01" min="0" value="' + (item.pagosCaja || 0) + '">');
     html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
   } else if (tipo === 'factura') {
     html += campoEdit('Proveedor', '<input type="text" class="field-input" id="editProveedor" value="' + escapeHtml(item.proveedor || '') + '">');
     html += campoEdit('Tipo de documento', '<select class="field-select" id="editTipoDoc">' +
-      '<option value="albaran"' + optionSelected('albaran', item.tipo) + '>AlbarÃ¡n</option>' +
+      '<option value="albaran"' + optionSelected('albaran', item.tipo) + '>Albarán</option>' +
       '<option value="factura"' + optionSelected('factura', item.tipo) + '>Factura</option>' +
       '<option value="ticket"' + optionSelected('ticket', item.tipo) + '>Ticket</option>' +
     '</select>');
-    html += campoEdit('NÂ° factura/albarÃ¡n', '<input type="text" class="field-input" id="editNumeroFactura" value="' + escapeHtml(item.numeroFactura || '') + '">');
-    html += campoEdit('Importe total (â‚¬)', '<input type="number" class="field-input" id="editImporteTotal" step="0.01" min="0" value="' + (item.importeTotal || 0) + '">');
-    html += campoEdit('Estado facturaciÃ³n', '<select class="field-select" id="editEstadoFacturacion">' +
+    html += campoEdit('N° factura/albarán', '<input type="text" class="field-input" id="editNumeroFactura" value="' + escapeHtml(item.numeroFactura || '') + '">');
+    html += campoEdit('Importe total (€)', '<input type="number" class="field-input" id="editImporteTotal" step="0.01" min="0" value="' + (item.importeTotal || 0) + '">');
+    html += campoEdit('Estado facturación', '<select class="field-select" id="editEstadoFacturacion">' +
       '<option value="contabilizable"' + optionSelected('contabilizable', item.estadoFacturacion || (documentoContabiliza(item) ? 'contabilizable' : 'pendiente_factura')) + '>Contabilizable</option>' +
       '<option value="pendiente_factura"' + optionSelected('pendiente_factura', item.estadoFacturacion) + '>Pendiente de factura</option>' +
       '<option value="facturado"' + optionSelected('facturado', item.estadoFacturacion) + '>Facturado</option>' +
@@ -4523,11 +4523,11 @@ function abrirEditarRegistro(tipo, id) {
     html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
   } else {
     html += campoEdit('Concepto', '<input type="text" class="field-input" id="editConcepto" value="' + escapeHtml(item.concepto || '') + '">');
-    html += campoEdit('CategorÃ­a', '<select class="field-select" id="editCategoria">' +
-      ['Alquiler','Transporte/Gasolina','Suministros','Personal','Material','Reparaciones','Impuestos','GestorÃ­a','Otros']
+    html += campoEdit('Categoría', '<select class="field-select" id="editCategoria">' +
+      ['Alquiler','Transporte/Gasolina','Suministros','Personal','Material','Reparaciones','Impuestos','Gestoría','Otros']
         .map(c => '<option value="' + escapeHtml(c) + '"' + optionSelected(c, item.categoria || 'Otros') + '>' + escapeHtml(c) + '</option>').join('') +
     '</select>');
-    html += campoEdit('Importe (â‚¬)', '<input type="number" class="field-input" id="editImporte" step="0.01" min="0" value="' + (item.importe || 0) + '">');
+    html += campoEdit('Importe (€)', '<input type="number" class="field-input" id="editImporte" step="0.01" min="0" value="' + (item.importe || 0) + '">');
     html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
   }
 
@@ -4592,7 +4592,7 @@ async function guardarEdicionRegistro() {
   hideLoading();
 
   registrarLog('EDICION', tipo + ' editado (id:' + (actualizado.syncId || actualizado.id) + ')', nombreTienda(actualizado.tienda));
-  showToast(ok ? 'Cambios guardados y sincronizados' : 'Cambios guardados; se sincronizarÃ¡n despuÃ©s', ok ? 'ok' : '');
+  showToast(ok ? 'Cambios guardados y sincronizados' : 'Cambios guardados; se sincronizarán después', ok ? 'ok' : '');
   cerrarEditarRegistro();
   if (calendarioDiaActivo) abrirDetalleDia(calendarioDiaActivo);
   refrescarPantallaActiva();
