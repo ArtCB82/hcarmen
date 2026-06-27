@@ -539,7 +539,10 @@
     flex-direction: column;
     gap: 4px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    cursor: pointer;
+    transition: border-color 0.12s, transform 0.12s;
   }
+  .calendar-day:active { transform: scale(0.98); }
   .calendar-day.muted { opacity: 0.35; }
   .calendar-day.today { border-color: var(--verde); }
   .calendar-day-num {
@@ -1027,6 +1030,33 @@
   }
   .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; margin-bottom: 16px; color: var(--verde); }
   .modal-btns { display: flex; gap: 10px; margin-top: 16px; }
+  .modal-subtitle { font-size: 13px; color: var(--gris); margin: -8px 0 14px; }
+  .modal-record-row {
+    background: var(--blanco);
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .modal-record-main { flex: 1; min-width: 0; }
+  .modal-record-title { font-size: 14px; font-weight: 800; color: var(--texto); }
+  .modal-record-meta { font-size: 12px; color: var(--gris); margin-top: 3px; line-height: 1.4; }
+  .modal-record-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .btn-small-edit {
+    background: var(--verde-suave);
+    border: none;
+    color: var(--verde);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: 'Lato', sans-serif;
+  }
+  .edit-form-grid { display: flex; flex-direction: column; gap: 10px; }
   .btn-cancelar {
     flex: 1; padding: 14px; border-radius: 12px; border: 2px solid #e5e7eb;
     background: white; font-family: 'Lato', sans-serif; font-size: 15px;
@@ -2077,6 +2107,33 @@
   </div>
 </div>
 
+<!-- MODAL DETALLE DIA CALENDARIO -->
+<div class="modal-overlay" id="modalDiaCalendario" style="display:none">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="modalDiaTitulo">Registros del dÃ­a</div>
+    <div class="modal-subtitle" id="modalDiaResumen"></div>
+    <div id="modalDiaLista"></div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarDetalleDia()" style="flex:1">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR REGISTRO -->
+<div class="modal-overlay" id="modalEditarRegistro" style="display:none">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-title" id="modalEditarTitulo">Editar registro</div>
+    <div class="modal-subtitle">Los cambios se guardan con el mismo syncId y se sincronizan con Google Sheets.</div>
+    <input type="hidden" id="editRegistroTipo">
+    <input type="hidden" id="editRegistroId">
+    <div id="modalEditarCampos" class="edit-form-grid"></div>
+    <div class="modal-btns">
+      <button class="btn-cancelar" onclick="cerrarEditarRegistro()" style="flex:1">Cancelar</button>
+      <button onclick="guardarEdicionRegistro()" style="flex:1;padding:14px;border-radius:12px;border:none;background:var(--verde);color:white;font-family:'Lato',sans-serif;font-size:15px;font-weight:800;cursor:pointer">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <div class="screen" id="screen-historial">
   <div class="header">
     <div class="header-top">
@@ -3036,6 +3093,34 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function analizarFechaSospechosa(fecha) {
+  if (!fecha) return null;
+  const d = new Date(fecha + 'T00:00:00');
+  if (isNaN(d.getTime())) return 'La fecha no parece vÃ¡lida.';
+
+  const hoy = new Date();
+  const hoy0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  const diasDiff = Math.round((d - hoy0) / 86400000);
+  const avisos = [];
+
+  if (diasDiff > 0) avisos.push('estÃ¡ en el futuro');
+  if (diasDiff < -100) avisos.push('tiene mÃ¡s de 3 meses de antigÃ¼edad');
+  if (d.getFullYear() !== hoy.getFullYear()) avisos.push('pertenece al aÃ±o ' + d.getFullYear());
+
+  return avisos.length ? 'La fecha ' + formatFecha(fecha) + ' ' + avisos.join(' y ') + '.' : null;
+}
+
+function confirmarFechaRegistro(fecha, tipo) {
+  const aviso = analizarFechaSospechosa(fecha);
+  if (!aviso) return true;
+  return confirm(
+    'AtenciÃ³n: ' + aviso + '\n\n' +
+    'Puede ser un error de reconocimiento o de introducciÃ³n manual.\n\n' +
+    'Aceptar: guardar igualmente.\n' +
+    'Cancelar: volver para corregir la fecha.'
+  );
+}
+
 function getStorage(key) {
   try { return JSON.parse(localStorage.getItem(key)) || []; }
   catch { return []; }
@@ -3635,6 +3720,7 @@ async function _guardarFactura() {
 
   const numeroFactura = document.getElementById('factNumeroFactura').value.trim();
   const fecha = document.getElementById('factFecha').value;
+  if (!confirmarFechaRegistro(fecha, 'factura')) return;
 
   // Comprobar duplicados (A: por N° referencia+proveedor; B: por fecha+proveedor+importe)
   const todasFacturas = getStorage('hcarmen_facturas');
@@ -3754,6 +3840,8 @@ async function guardarVenta() {
   const tj    = parseFloat(document.getElementById('ventaTarjeta').value)||0;
   const ef    = Math.max(0, total - tj);
   if (total <= 0) { showToast('Introduce el total del día', 'error'); return; }
+  const fechaVenta = document.getElementById('ventaFecha').value;
+  if (!confirmarFechaRegistro(fechaVenta, 'venta')) return;
 
   const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
   const tickets = parseInt(document.getElementById('ventaTickets').value)||0;
@@ -3761,7 +3849,7 @@ async function guardarVenta() {
   const venta = {
     id: syncIdV,
     syncId: syncIdV,
-    fecha: document.getElementById('ventaFecha').value,
+    fecha: fechaVenta,
     tienda: tiendaVenta,
     efectivo: ef,
     tarjeta: tj,
@@ -3811,6 +3899,7 @@ async function guardarGasto() {
 
   const fechaGasto = document.getElementById('gastoFecha').value;
   const categoriaGasto = document.getElementById('gastoCat').value;
+  if (!confirmarFechaRegistro(fechaGasto, 'gasto')) return;
 
   const dupG = getStorage('hcarmen_gastos').find(g =>
     g.fecha === fechaGasto &&
@@ -3826,7 +3915,7 @@ async function guardarGasto() {
   const gasto = {
     id: syncIdG,
     syncId: syncIdG,
-    fecha: document.getElementById('gastoFecha').value,
+    fecha: fechaGasto,
     concepto,
     tienda: tiendaGasto,
     importe,
@@ -4111,12 +4200,121 @@ function coincideBusquedaHistorial(item, query) {
   return normalizarTexto(query).split(/\s+/).filter(Boolean).every(term => texto.includes(term));
 }
 
-function renderHistorial(filtro) {
-  historialFiltroActual = filtro || 'todo';
+function esAdminActual() {
+  return Boolean(usuarioActual && usuarioActual.rol === 'admin');
+}
+
+function registroId(item) {
+  return String((item && (item.id || item.syncId)) || '');
+}
+
+function storageKeyRegistro(tipo) {
+  if (tipo === 'factura') return 'hcarmen_facturas';
+  if (tipo === 'venta') return 'hcarmen_ventas';
+  if (tipo === 'gasto') return 'hcarmen_gastos';
+  return '';
+}
+
+function obtenerRegistro(tipo, id) {
+  const key = storageKeyRegistro(tipo);
+  if (!key) return null;
+  return getStorage(key).find(x => String(x.id || x.syncId) === String(id)) || null;
+}
+
+function registrosHistorialBase() {
   const facturas = getStorage('hcarmen_facturas').map(f => ({...f, _tipo:'factura'}));
   const ventas = getStorage('hcarmen_ventas').map(v => ({...v, _tipo:'venta'}));
   const gastos = getStorage('hcarmen_gastos').map(g => ({...g, _tipo:'gasto'}));
-  let todos = [...facturas, ...ventas, ...gastos].sort((a,b) => b.fecha.localeCompare(a.fecha));
+  return [...facturas, ...ventas, ...gastos];
+}
+
+function importeRegistro(item) {
+  if (!item) return 0;
+  if (item._tipo === 'factura') return item.importeTotal || 0;
+  if (item._tipo === 'venta') return item.total || 0;
+  return item.importe || 0;
+}
+
+function tituloRegistro(item) {
+  if (item._tipo === 'factura') return item.proveedor || 'Sin proveedor';
+  if (item._tipo === 'venta') return 'Ventas del dÃ­a';
+  return item.concepto || 'Gasto';
+}
+
+function syncPayloadRegistro(tipo, item) {
+  if (tipo === 'factura') return { action: 'addFactura', payload: { factura: facturaPayload(item) } };
+  if (tipo === 'venta') return { action: 'addVenta', payload: { venta: {
+    fecha: item.fecha,
+    tienda: nombreTienda(item.tienda),
+    efectivo: item.efectivo || 0,
+    tarjeta: item.tarjeta || 0,
+    total: item.total || 0,
+    notas: item.notas || '',
+    usuario: item.usuario || '',
+    syncId: item.syncId,
+    createdAt: item.createdAt || nowIso()
+  } } };
+  if (tipo === 'gasto') return { action: 'addGasto', payload: { gasto: {
+    fecha: item.fecha,
+    concepto: item.concepto || '',
+    tienda: nombreTienda(item.tienda),
+    importe: item.importe || 0,
+    categoria: item.categoria || 'Otros',
+    notas: item.notas || '',
+    usuario: item.usuario || '',
+    syncId: item.syncId,
+    createdAt: item.createdAt || nowIso()
+  } } };
+  return null;
+}
+
+async function sincronizarRegistroEditado(tipo, item) {
+  const sync = syncPayloadRegistro(tipo, item);
+  if (!sync) return false;
+  return await syncData(sync.action, sync.payload);
+}
+
+function actualizarRegistroLocal(tipo, actualizado, synced) {
+  const key = storageKeyRegistro(tipo);
+  if (!key) return;
+  const id = String(actualizado.id || actualizado.syncId);
+  setStorage(key, getStorage(key).map(x =>
+    String(x.id || x.syncId) === id ? { ...actualizado, synced } : x
+  ));
+}
+
+function pintarRegistroResumen(item, opciones) {
+  const opts = opciones || {};
+  const tipo = item._tipo;
+  const icono = tipo === 'venta' ? 'V' : tipo === 'factura' ? 'F' : 'G';
+  const clase = tipo;
+  const tiendaTag = item.tienda === 'tienda1' ? 'S.Asturio' : item.tienda === 'tienda2' ? 'J.GuzmÃ¡n' : 'Ambas';
+  const adminBtns = esAdminActual()
+    ? '<button class="btn-small-edit" onclick="abrirEditarRegistro(\'' + tipo + '\',\'' + registroId(item) + '\')">Editar</button>'
+    : '';
+  const extra = tipo === 'factura'
+    ? '<div class="modal-record-meta">' + escapeHtml(item.tipo || 'factura') + (item.numeroFactura ? ' Â· NÂ° ' + escapeHtml(item.numeroFactura) : '') + '</div>'
+    : tipo === 'gasto'
+      ? '<div class="modal-record-meta">' + escapeHtml(item.categoria || 'Otros') + '</div>'
+      : '';
+  return '<div class="modal-record-row">' +
+    '<span class="cal-mark ' + clase + '">' + icono + '</span>' +
+    '<div class="modal-record-main">' +
+      '<div class="modal-record-title">' + escapeHtml(tituloRegistro(item)) + '</div>' +
+      '<div class="modal-record-meta">' + formatFecha(item.fecha) + ' Â· ' + tiendaTag + (item.usuario ? ' Â· ' + escapeHtml(item.usuario) : '') + '</div>' +
+      extra +
+      (item.notas ? '<div class="modal-record-meta">' + escapeHtml(item.notas) + '</div>' : '') +
+    '</div>' +
+    '<div class="modal-record-actions">' +
+      '<strong style="font-family:\'Playfair Display\',serif;color:' + (tipo === 'venta' ? 'var(--verde)' : 'var(--naranja)') + '">' + fmtEur(importeRegistro(item)) + '</strong>' +
+      (opts.mostrarAcciones === false ? '' : adminBtns) +
+    '</div>' +
+  '</div>';
+}
+
+function renderHistorial(filtro) {
+  historialFiltroActual = filtro || 'todo';
+  let todos = registrosHistorialBase().sort((a,b) => b.fecha.localeCompare(a.fecha));
 
   if (filtro === 'venta') todos = todos.filter(x => x._tipo==='venta');
   else if (filtro === 'factura') todos = todos.filter(x => x._tipo==='factura');
@@ -4168,7 +4366,8 @@ function renderHistorial(filtro) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
         <div class="item-importe ${clasImporte}">${importe}</div>
-        <button onclick="borrarRegistro('${item._tipo}','${item.id}',this)" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">🗑 Borrar</button>
+        ${esAdminActual() ? `<button onclick="abrirEditarRegistro('${item._tipo}','${registroId(item)}')" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;">Editar</button>` : ''}
+        <button onclick="borrarRegistro('${item._tipo}','${registroId(item)}',this)" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">🗑 Borrar</button>
       </div>
     </div>`;
   }).join('');
@@ -4216,6 +4415,165 @@ function filtrarHistorial(filtro, btn) {
   document.querySelectorAll('#screen-historial .filtro-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   renderHistorial(filtro);
+}
+
+let calendarioDiaActivo = null;
+
+function cerrarDetalleDia() {
+  document.getElementById('modalDiaCalendario').style.display = 'none';
+  calendarioDiaActivo = null;
+}
+
+function abrirDetalleDia(fecha) {
+  calendarioDiaActivo = fecha;
+  const regs = registrosHistorialBase()
+    .filter(x => x.fecha === fecha)
+    .sort((a,b) => a._tipo.localeCompare(b._tipo));
+  const totalVentas = regs.filter(x=>x._tipo==='venta').reduce((s,x)=>s+(x.total||0),0);
+  const totalCostes = regs.filter(x=>x._tipo!=='venta').reduce((s,x)=>s+importeRegistro(x),0);
+  const resumen = [
+    regs.filter(x=>x._tipo==='venta').length + ' ventas',
+    regs.filter(x=>x._tipo==='factura').length + ' facturas/albaranes',
+    regs.filter(x=>x._tipo==='gasto').length + ' gastos'
+  ].join(' · ');
+
+  document.getElementById('modalDiaTitulo').textContent = formatFecha(fecha);
+  document.getElementById('modalDiaResumen').textContent =
+    resumen + ' · Ventas: ' + fmtEur(totalVentas) + ' · Costes: ' + fmtEur(totalCostes);
+  document.getElementById('modalDiaLista').innerHTML = regs.length
+    ? regs.map(r => pintarRegistroResumen(r)).join('')
+    : '<div style="text-align:center;color:var(--gris);padding:18px;font-size:14px">Sin registros en este dÃ­a</div>';
+  document.getElementById('modalDiaCalendario').style.display = 'flex';
+}
+
+function cerrarEditarRegistro() {
+  document.getElementById('modalEditarRegistro').style.display = 'none';
+}
+
+function optionSelected(valor, actual) {
+  return String(valor) === String(actual) ? ' selected' : '';
+}
+
+function campoEdit(label, html) {
+  return '<div class="field-group"><div class="field-label">' + label + '</div>' + html + '</div>';
+}
+
+function abrirEditarRegistro(tipo, id) {
+  if (!esAdminActual()) { showToast('Solo administradores', 'error'); return; }
+  const item = obtenerRegistro(tipo, id);
+  if (!item) { showToast('Registro no encontrado', 'error'); return; }
+
+  document.getElementById('editRegistroTipo').value = tipo;
+  document.getElementById('editRegistroId').value = id;
+  document.getElementById('modalEditarTitulo').textContent =
+    tipo === 'venta' ? 'Editar venta' : tipo === 'factura' ? 'Editar factura/albarÃ¡n' : 'Editar gasto';
+
+  let html = '';
+  const tiendaSelect = '<select class="field-select" id="editTienda">' +
+    '<option value="tienda1"' + optionSelected('tienda1', item.tienda) + '>San Asturio</option>' +
+    '<option value="tienda2"' + optionSelected('tienda2', item.tienda) + '>Juan de GuzmÃ¡n</option>' +
+    (tipo === 'venta' ? '' : '<option value="ambas"' + optionSelected('ambas', item.tienda) + '>Ambas tiendas</option>') +
+  '</select>';
+
+  html += campoEdit('Fecha', '<input type="date" class="field-input" id="editFecha" value="' + escapeHtml(item.fecha || '') + '">');
+  html += campoEdit('Tienda', tiendaSelect);
+
+  if (tipo === 'venta') {
+    html += campoEdit('Total ventas (â‚¬)', '<input type="number" class="field-input" id="editTotal" step="0.01" min="0" value="' + (item.total || 0) + '">');
+    html += campoEdit('Tarjeta/datÃ¡fono (â‚¬)', '<input type="number" class="field-input" id="editTarjeta" step="0.01" min="0" value="' + (item.tarjeta || 0) + '">');
+    html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
+  } else if (tipo === 'factura') {
+    html += campoEdit('Proveedor', '<input type="text" class="field-input" id="editProveedor" value="' + escapeHtml(item.proveedor || '') + '">');
+    html += campoEdit('Tipo de documento', '<select class="field-select" id="editTipoDoc">' +
+      '<option value="albaran"' + optionSelected('albaran', item.tipo) + '>AlbarÃ¡n</option>' +
+      '<option value="factura"' + optionSelected('factura', item.tipo) + '>Factura</option>' +
+      '<option value="ticket"' + optionSelected('ticket', item.tipo) + '>Ticket</option>' +
+    '</select>');
+    html += campoEdit('NÂ° factura/albarÃ¡n', '<input type="text" class="field-input" id="editNumeroFactura" value="' + escapeHtml(item.numeroFactura || '') + '">');
+    html += campoEdit('Importe total (â‚¬)', '<input type="number" class="field-input" id="editImporteTotal" step="0.01" min="0" value="' + (item.importeTotal || 0) + '">');
+    html += campoEdit('Estado facturaciÃ³n', '<select class="field-select" id="editEstadoFacturacion">' +
+      '<option value="contabilizable"' + optionSelected('contabilizable', item.estadoFacturacion || (documentoContabiliza(item) ? 'contabilizable' : 'pendiente_factura')) + '>Contabilizable</option>' +
+      '<option value="pendiente_factura"' + optionSelected('pendiente_factura', item.estadoFacturacion) + '>Pendiente de factura</option>' +
+      '<option value="facturado"' + optionSelected('facturado', item.estadoFacturacion) + '>Facturado</option>' +
+      '<option value="no_contabilizar"' + optionSelected('no_contabilizar', item.estadoFacturacion) + '>No contabilizar</option>' +
+      '<option value="revisar"' + optionSelected('revisar', item.estadoFacturacion) + '>Revisar</option>' +
+    '</select>');
+    html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
+  } else {
+    html += campoEdit('Concepto', '<input type="text" class="field-input" id="editConcepto" value="' + escapeHtml(item.concepto || '') + '">');
+    html += campoEdit('CategorÃ­a', '<select class="field-select" id="editCategoria">' +
+      ['Alquiler','Transporte/Gasolina','Suministros','Personal','Material','Reparaciones','Impuestos','GestorÃ­a','Otros']
+        .map(c => '<option value="' + escapeHtml(c) + '"' + optionSelected(c, item.categoria || 'Otros') + '>' + escapeHtml(c) + '</option>').join('') +
+    '</select>');
+    html += campoEdit('Importe (â‚¬)', '<input type="number" class="field-input" id="editImporte" step="0.01" min="0" value="' + (item.importe || 0) + '">');
+    html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
+  }
+
+  document.getElementById('modalEditarCampos').innerHTML = html;
+  document.getElementById('modalEditarRegistro').style.display = 'flex';
+}
+
+async function guardarEdicionRegistro() {
+  if (!esAdminActual()) { showToast('Solo administradores', 'error'); return; }
+  const tipo = document.getElementById('editRegistroTipo').value;
+  const id = document.getElementById('editRegistroId').value;
+  const original = obtenerRegistro(tipo, id);
+  if (!original) { showToast('Registro no encontrado', 'error'); return; }
+
+  const fecha = document.getElementById('editFecha').value;
+  if (!confirmarFechaRegistro(fecha, tipo)) return;
+
+  let actualizado = { ...original, fecha, tienda: document.getElementById('editTienda').value, synced: false };
+  if (tipo === 'venta') {
+    const total = parseFloat(document.getElementById('editTotal').value) || 0;
+    const tarjeta = parseFloat(document.getElementById('editTarjeta').value) || 0;
+    if (total <= 0) { showToast('Introduce el total', 'error'); return; }
+    actualizado = { ...actualizado, total, tarjeta, efectivo: Math.max(0, total - tarjeta), notas: document.getElementById('editNotas').value.trim() };
+  } else if (tipo === 'factura') {
+    const proveedor = document.getElementById('editProveedor').value.trim();
+    const importeTotal = parseFloat(document.getElementById('editImporteTotal').value) || 0;
+    if (!proveedor) { showToast('Indica el proveedor', 'error'); return; }
+    if (importeTotal <= 0) { showToast('Indica el importe', 'error'); return; }
+    const prov = resolverProveedorParaFactura(proveedor);
+    const estado = document.getElementById('editEstadoFacturacion').value;
+    actualizado = {
+      ...actualizado,
+      proveedor,
+      proveedorId: prov ? prov.id : (actualizado.proveedorId || ''),
+      tipo: document.getElementById('editTipoDoc').value,
+      numeroFactura: document.getElementById('editNumeroFactura').value.trim(),
+      importeTotal,
+      estadoFacturacion: estado,
+      contabiliza: !['pendiente_factura','no_contabilizar','revisar'].includes(estado),
+      notas: document.getElementById('editNotas').value.trim()
+    };
+  } else if (tipo === 'gasto') {
+    const concepto = document.getElementById('editConcepto').value.trim();
+    const importe = parseFloat(document.getElementById('editImporte').value) || 0;
+    if (!concepto) { showToast('Indica el concepto', 'error'); return; }
+    if (importe <= 0) { showToast('Indica el importe', 'error'); return; }
+    actualizado = {
+      ...actualizado,
+      concepto,
+      importe,
+      categoria: document.getElementById('editCategoria').value,
+      notas: document.getElementById('editNotas').value.trim()
+    };
+  }
+
+  actualizarRegistroLocal(tipo, actualizado, false);
+  updateSyncBar();
+  showLoading('Guardando cambios...');
+  const ok = await sincronizarRegistroEditado(tipo, actualizado);
+  if (ok) actualizarRegistroLocal(tipo, actualizado, true);
+  hideLoading();
+
+  registrarLog('EDICION', tipo + ' editado (id:' + (actualizado.syncId || actualizado.id) + ')', nombreTienda(actualizado.tienda));
+  showToast(ok ? 'Cambios guardados y sincronizados' : 'Cambios guardados; se sincronizarÃ¡n despuÃ©s', ok ? 'ok' : '');
+  cerrarEditarRegistro();
+  if (calendarioDiaActivo) abrirDetalleDia(calendarioDiaActivo);
+  refrescarPantallaActiva();
+  updateSyncBar();
 }
 
 function textoBusquedaAlbaran(doc) {
@@ -4397,7 +4755,7 @@ function renderCalendario() {
       marcaCalendario('factura', 'F', r.factura),
       marcaCalendario('gasto', 'G', r.gasto)
     ].join('');
-    return `<div class="calendar-day ${d.getMonth() !== m ? 'muted' : ''} ${key === hoyKey ? 'today' : ''}">
+    return `<div class="calendar-day ${d.getMonth() !== m ? 'muted' : ''} ${key === hoyKey ? 'today' : ''}" onclick="abrirDetalleDia('${key}')">
       <div class="calendar-day-num">${d.getDate()}</div>
       <div class="calendar-marks">${marks}</div>
     </div>`;
@@ -4420,7 +4778,7 @@ function renderCalendarioSemana() {
       <span>${x.titulo}</span>
       <strong>${fmtEur(x.importe)}</strong>
     </div>`).join('') : `<div style="font-size:13px;color:var(--gris);padding-top:2px">Sin registros</div>`;
-    return `<div class="calendar-week-day">
+    return `<div class="calendar-week-day" onclick="abrirDetalleDia('${key}')" style="cursor:pointer">
       <div class="calendar-week-head">
         <div class="calendar-week-date">${d.toLocaleDateString('es-ES', {weekday:'long', day:'2-digit', month:'2-digit'})}</div>
         <div class="calendar-week-total">${regs.length} registros &middot; ${fmtEur(total)}</div>
