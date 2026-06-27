@@ -5265,6 +5265,55 @@ function filtrarPorPeriodoYTienda(arr, rango) {
   });
 }
 
+function crearCacheVentasPorMes() {
+  const cache = {};
+  getStorage('hcarmen_ventas').forEach(v => {
+    if (!v.fecha) return;
+    const d = new Date(v.fecha);
+    const key = d.getFullYear() + '-' + d.getMonth();
+    if (!cache[key]) cache[key] = { SA: 0, JdG: 0 };
+    if (v.tienda === 'tienda1') cache[key].SA += (v.total || 0);
+    if (v.tienda === 'tienda2') cache[key].JdG += (v.total || 0);
+  });
+  return cache;
+}
+
+function ventasMesParaReparto(fecha, cache) {
+  const d = new Date(fecha);
+  return cache[d.getFullYear() + '-' + d.getMonth()] || { SA: 0, JdG: 0 };
+}
+
+function importeAsignadoCoste(item, tipo, tiendaFiltro, ventasCache) {
+  const importe = tipo === 'factura' ? (item.importeTotal || 0) : (item.importe || 0);
+  if (tiendaFiltro === 'todas') return importe;
+  if (item.tienda === tiendaFiltro) return importe;
+  if (item.tienda !== 'ambas') return 0;
+
+  const ventasMes = ventasMesParaReparto(item.fecha, ventasCache);
+  const categoria = tipo === 'factura' ? '_factura' : item.categoria;
+  const reparto = calcularReparto(importe, categoria, ventasMes.SA, ventasMes.JdG);
+  return tiendaFiltro === 'tienda1' ? reparto.SA : reparto.JdG;
+}
+
+function costesAsignadosPorPeriodoYTienda(arr, rango, tiendaFiltro, tipo) {
+  const ventasCache = crearCacheVentasPorMes();
+  return arr
+    .filter(x => {
+      if (!x.fecha) return false;
+      const d = new Date(x.fecha);
+      return d >= rango.desde && d <= rango.hasta;
+    })
+    .map(x => {
+      const importeAsignado = importeAsignadoCoste(x, tipo, tiendaFiltro, ventasCache);
+      return {
+        ...x,
+        _importeStats: importeAsignado,
+        _repartidoStats: x.tienda === 'ambas' && tiendaFiltro !== 'todas'
+      };
+    })
+    .filter(x => x._importeStats > 0);
+}
+
 function getMesesEnRango(rango) {
   const meses = [];
   const cur = new Date(rango.desde.getFullYear(), rango.desde.getMonth(), 1);
@@ -5280,12 +5329,17 @@ function renderEstadisticas() {
   if (!rango) return;
 
   const ventas = filtrarPorPeriodoYTienda(getStorage('hcarmen_ventas'), rango);
-  const facturas = facturasContabilizables(filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango));
-  const gastos = filtrarPorPeriodoYTienda(getStorage('hcarmen_gastos'), rango);
+  const facturas = costesAsignadosPorPeriodoYTienda(
+    facturasContabilizables(getStorage('hcarmen_facturas')),
+    rango,
+    statsFiltroTienda,
+    'factura'
+  );
+  const gastos = costesAsignadosPorPeriodoYTienda(getStorage('hcarmen_gastos'), rango, statsFiltroTienda, 'gasto');
 
   const totalVentas = ventas.reduce((s,v) => s+v.total, 0);
-  const totalCompras = facturas.reduce((s,f) => s+f.importeTotal, 0);
-  const totalGastos = gastos.reduce((s,g) => s+g.importe, 0);
+  const totalCompras = facturas.reduce((s,f) => s+f._importeStats, 0);
+  const totalGastos = gastos.reduce((s,g) => s+g._importeStats, 0);
   const totalCostes = totalCompras + totalGastos;
   const margenBruto = totalVentas - totalCompras;
   const beneficio = totalVentas - totalCostes;
@@ -5333,11 +5387,11 @@ function renderEstadisticas() {
   );
   const comprasPorMes = meses.map(({y,m}) =>
     facturas.filter(f => { const d=new Date(f.fecha); return d.getFullYear()===y && d.getMonth()===m; })
-            .reduce((s,f)=>s+f.importeTotal,0)
+            .reduce((s,f)=>s+f._importeStats,0)
   );
   const gastosPorMes = meses.map(({y,m}) =>
     gastos.filter(g => { const d=new Date(g.fecha); return d.getFullYear()===y && d.getMonth()===m; })
-          .reduce((s,g)=>s+g.importe,0)
+          .reduce((s,g)=>s+g._importeStats,0)
   );
   const beneficioPorMes = ventasPorMes.map((v,i) => v - comprasPorMes[i] - gastosPorMes[i]);
 
@@ -5543,19 +5597,16 @@ function renderStatsCompras() {
   const todasF = getStorage('hcarmen_facturas');
   const todosG = getStorage('hcarmen_gastos');
 
-  function enRango(fecha) {
-    const d = new Date(fecha);
-    return d >= rango.desde && d <= rango.hasta;
-  }
-  function deTienda(x) {
-    return comprasFiltroTienda === 'todas' || x.tienda === comprasFiltroTienda;
-  }
+  const facturas = costesAsignadosPorPeriodoYTienda(
+    facturasContabilizables(todasF),
+    rango,
+    comprasFiltroTienda,
+    'factura'
+  );
+  const gastos = costesAsignadosPorPeriodoYTienda(todosG, rango, comprasFiltroTienda, 'gasto');
 
-  const facturas = facturasContabilizables(todasF.filter(f => f.fecha && enRango(f.fecha) && deTienda(f)));
-  const gastos   = todosG.filter(g => g.fecha && enRango(g.fecha) && deTienda(g));
-
-  const totalCompras = facturas.reduce((s,f) => s+(f.importeTotal||0), 0);
-  const totalGastos  = gastos.reduce((s,g) => s+(g.importe||0), 0);
+  const totalCompras = facturas.reduce((s,f) => s+f._importeStats, 0);
+  const totalGastos  = gastos.reduce((s,g) => s+g._importeStats, 0);
   const totalCostes  = totalCompras + totalGastos;
   const nFacturas    = facturas.length;
   const facturaMedia = nFacturas > 0 ? totalCompras / nFacturas : 0;
@@ -5565,7 +5616,7 @@ function renderStatsCompras() {
   const byProv = {};
   facturas.forEach(f => {
     const k = f.proveedor || 'Sin nombre';
-    byProv[k] = (byProv[k]||0) + (f.importeTotal||0);
+    byProv[k] = (byProv[k]||0) + f._importeStats;
   });
   const topProv = Object.entries(byProv).sort((a,b) => b[1]-a[1]);
   const provPrincipal = topProv.length ? topProv[0][0] : '—';
@@ -5578,9 +5629,14 @@ function renderStatsCompras() {
   const facturasAnt = facturasContabilizables(todasF.filter(f => {
     if (!f.fecha) return false;
     const d = new Date(f.fecha);
-    return d >= desdeAnt && d <= hastaAnt && deTienda(f);
+    return d >= desdeAnt && d <= hastaAnt;
   }));
-  const totalAnt = facturasAnt.reduce((s,f) => s+(f.importeTotal||0), 0);
+  const totalAnt = costesAsignadosPorPeriodoYTienda(
+    facturasAnt,
+    { desde: desdeAnt, hasta: hastaAnt },
+    comprasFiltroTienda,
+    'factura'
+  ).reduce((s,f) => s+f._importeStats, 0);
   const varPct = totalAnt > 0 ? ((totalCompras - totalAnt) / totalAnt * 100) : null;
 
   // ── KPI Grid ──
@@ -5619,12 +5675,12 @@ function renderStatsCompras() {
   const comprasPorMes = meses.map(function(x) {
     return facturas.filter(function(f) {
       var d = new Date(f.fecha); return d.getFullYear()===x.y && d.getMonth()===x.m;
-    }).reduce(function(s,f) { return s+(f.importeTotal||0); }, 0);
+    }).reduce(function(s,f) { return s+f._importeStats; }, 0);
   });
   const gastosPorMes = meses.map(function(x) {
     return gastos.filter(function(g) {
       var d = new Date(g.fecha); return d.getFullYear()===x.y && d.getMonth()===x.m;
-    }).reduce(function(s,g) { return s+(g.importe||0); }, 0);
+    }).reduce(function(s,g) { return s+g._importeStats; }, 0);
   });
 
   function tendC(arr) {
@@ -5721,7 +5777,7 @@ function renderRankingProveedores(facturas, rango) {
   facturas.forEach(function(f) {
     var k = f.proveedor || 'Sin nombre';
     if (!byProv[k]) byProv[k] = { nombre:k, total:0, count:0, facturas:[] };
-    byProv[k].total += (f.importeTotal||0);
+    byProv[k].total += (f._importeStats !== undefined ? f._importeStats : (f.importeTotal||0));
     byProv[k].count++;
     byProv[k].facturas.push(f);
   });
@@ -5731,8 +5787,8 @@ function renderRankingProveedores(facturas, rango) {
   ranking.forEach(function(p) {
     var primera = p.facturas.filter(function(f){ return new Date(f.fecha) <= mid; });
     var segunda  = p.facturas.filter(function(f){ return new Date(f.fecha) > mid; });
-    var mediaP = primera.length ? primera.reduce(function(s,f){return s+(f.importeTotal||0);},0)/primera.length : null;
-    var mediaS = segunda.length  ? segunda.reduce(function(s,f){return s+(f.importeTotal||0);},0)/segunda.length  : null;
+    var mediaP = primera.length ? primera.reduce(function(s,f){return s+(f._importeStats !== undefined ? f._importeStats : (f.importeTotal||0));},0)/primera.length : null;
+    var mediaS = segunda.length  ? segunda.reduce(function(s,f){return s+(f._importeStats !== undefined ? f._importeStats : (f.importeTotal||0));},0)/segunda.length  : null;
     p.media = p.count > 0 ? p.total / p.count : 0;
     p.variacion = (mediaP !== null && mediaS !== null) ? ((mediaS-mediaP)/mediaP*100) : null;
   });
@@ -5766,7 +5822,7 @@ function renderGastosCategorias(gastos) {
   var byCat = {};
   gastos.forEach(function(g) {
     var k = g.categoria || 'Otros';
-    byCat[k] = (byCat[k]||0) + (g.importe||0);
+    byCat[k] = (byCat[k]||0) + (g._importeStats !== undefined ? g._importeStats : (g.importe||0));
   });
   var cats  = Object.entries(byCat).sort(function(a,b){ return b[1]-a[1]; });
   var total = cats.reduce(function(s,x){ return s+x[1]; }, 0);
@@ -5802,7 +5858,7 @@ function renderTiposDocumento(facturas) {
     var k = (f.tipo||'factura').toLowerCase();
     if (!byTipo[k]) byTipo[k] = { count:0, total:0 };
     byTipo[k].count++;
-    byTipo[k].total += (f.importeTotal||0);
+    byTipo[k].total += (f._importeStats !== undefined ? f._importeStats : (f.importeTotal||0));
   });
   var tipos = Object.entries(byTipo).sort(function(a,b){ return b[1].total-a[1].total; });
   var el    = document.getElementById('tiposDocumento');
@@ -5970,12 +6026,17 @@ function generarPDFVentas() {
   if (!rango) { showToast('Selecciona un período válido', 'error'); return; }
 
   const ventas   = filtrarPorPeriodoYTienda(getStorage('hcarmen_ventas'),   rango);
-  const facturas = facturasContabilizables(filtrarPorPeriodoYTienda(getStorage('hcarmen_facturas'), rango));
-  const gastos   = filtrarPorPeriodoYTienda(getStorage('hcarmen_gastos'),   rango);
+  const facturas = costesAsignadosPorPeriodoYTienda(
+    facturasContabilizables(getStorage('hcarmen_facturas')),
+    rango,
+    statsFiltroTienda,
+    'factura'
+  );
+  const gastos = costesAsignadosPorPeriodoYTienda(getStorage('hcarmen_gastos'), rango, statsFiltroTienda, 'gasto');
 
   const totalVentas  = ventas.reduce((s,v) => s + v.total, 0);
-  const totalCompras = facturas.reduce((s,f) => s + f.importeTotal, 0);
-  const totalGastos  = gastos.reduce((s,g) => s + g.importe, 0);
+  const totalCompras = facturas.reduce((s,f) => s + f._importeStats, 0);
+  const totalGastos  = gastos.reduce((s,g) => s + g._importeStats, 0);
   const totalCostes  = totalCompras + totalGastos;
   const beneficio    = totalVentas - totalCostes;
   const margenBruto  = totalVentas - totalCompras;
@@ -6027,14 +6088,16 @@ function generarPDFCompras() {
   const rango = getRangoCompras();
   if (!rango) { showToast('Selecciona un período válido', 'error'); return; }
 
-  function enR(f) { const d=new Date(f.fecha||''); return d>=rango.desde&&d<=rango.hasta; }
-  function deTi(x) { return comprasFiltroTienda==='todas'||x.tienda===comprasFiltroTienda; }
+  const facturas = costesAsignadosPorPeriodoYTienda(
+    facturasContabilizables(getStorage('hcarmen_facturas')),
+    rango,
+    comprasFiltroTienda,
+    'factura'
+  );
+  const gastos = costesAsignadosPorPeriodoYTienda(getStorage('hcarmen_gastos'), rango, comprasFiltroTienda, 'gasto');
 
-  const facturas = facturasContabilizables(getStorage('hcarmen_facturas').filter(f=>f.fecha&&enR(f)&&deTi(f)));
-  const gastos   = getStorage('hcarmen_gastos').filter(g=>g.fecha&&enR(g)&&deTi(g));
-
-  const totalCompras = facturas.reduce((s,f)=>s+(f.importeTotal||0),0);
-  const totalGastos  = gastos.reduce((s,g)=>s+(g.importe||0),0);
+  const totalCompras = facturas.reduce((s,f)=>s+f._importeStats,0);
+  const totalGastos  = gastos.reduce((s,g)=>s+g._importeStats,0);
   const totalCostes  = totalCompras + totalGastos;
   const nFact        = facturas.length;
   const facMediaVal  = nFact > 0 ? totalCompras / nFact : 0;
@@ -6043,12 +6106,12 @@ function generarPDFCompras() {
   facturas.forEach(f=>{
     const k=f.proveedor||'Sin nombre';
     if(!byProv[k]) byProv[k]={total:0,count:0};
-    byProv[k].total+=(f.importeTotal||0); byProv[k].count++;
+    byProv[k].total+=f._importeStats; byProv[k].count++;
   });
   const ranking = Object.entries(byProv).sort((a,b)=>b[1].total-a[1].total);
 
   const byCat = {};
-  gastos.forEach(g=>{ const k=g.categoria||'Otros'; byCat[k]=(byCat[k]||0)+(g.importe||0); });
+  gastos.forEach(g=>{ const k=g.categoria||'Otros'; byCat[k]=(byCat[k]||0)+g._importeStats; });
   const cats = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
 
   const periodoStr = rango.desde.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}) + ' – ' + rango.hasta.toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'});
