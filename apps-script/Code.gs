@@ -19,7 +19,7 @@ const HEADERS_FACTURAS = [
 
 const HEADERS_VENTAS = [
   'Fecha', 'Tienda', 'Efectivo', 'Tarjeta', 'Total', 'Notas', 'SyncID',
-  'Usuario', 'CreatedAt'
+  'Usuario', 'CreatedAt', 'PagosCaja'
 ];
 
 const HEADERS_GASTOS = [
@@ -320,7 +320,8 @@ function getVentas() {
     notas: r[5] || '',
     syncId: r[6] || '',
     usuario: r[7] || '',
-    createdAt: r[8] || ''
+    createdAt: r[8] || '',
+    pagosCaja: r[9] || 0
   }));
 }
 
@@ -418,7 +419,8 @@ function addVenta(v) {
     v.notas || '',
     syncId,
     v.usuario || '',
-    v.createdAt || nowIso()
+    v.createdAt || nowIso(),
+    v.pagosCaja || 0
   ];
 
   const data = sheet.getDataRange().getValues();

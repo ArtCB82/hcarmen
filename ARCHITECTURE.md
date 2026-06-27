@@ -54,7 +54,7 @@ La app funciona offline con los datos en caché. Cuando hay conectividad, sincro
 | Clave | Contenido |
 |---|---|
 | `hcarmen_facturas` | Array de facturas/albaranes (campos: syncId, fecha, proveedor, proveedorId, tipo, numeroFactura, importeTotal, tienda, notas, usuario, createdAt, estadoFacturacion, contabiliza, facturaRelacionadaId, albaranesRelacionados, synced) |
-| `hcarmen_ventas` | Array de ventas diarias (campos: syncId, fecha, tienda, efectivo, tarjeta, total, notas, usuario, createdAt, synced) |
+| `hcarmen_ventas` | Array de ventas diarias (campos: syncId, fecha, tienda, efectivo, tarjeta, total, pagosCaja, notas, usuario, createdAt, synced) |
 | `hcarmen_gastos` | Array de gastos manuales (campos: syncId, fecha, concepto, categoria, importe, tienda, notas, usuario, createdAt, synced) |
 | `hcarmen_proveedores` | Array de proveedores (incluye `modoFacturacion`, `diasMaxFactura`, `toleranciaFactura`) |
 | `hcarmen_session` | Sesion activa (usuario + expiracion) |
@@ -120,6 +120,7 @@ Los documentos nuevos guardan `estadoFacturacion` y `contabiliza`. Los resumenes
 | G | 6 | syncId |
 | H | 7 | usuario (recomendado) |
 | I | 8 | createdAt (recomendado) |
+| J | 9 | pagosCaja |
 
 ### Tab `Gastos_Manual` (8 columnas + recomendadas)
 

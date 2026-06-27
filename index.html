@@ -1556,6 +1556,11 @@
         <input type="number" class="field-input" id="ventaTarjeta" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
       </div>
 
+      <div class="field-group">
+        <div class="field-label">Pagos a proveedores desde caja (â‚¬)</div>
+        <input type="number" class="field-input" id="ventaPagosCaja" placeholder="0.00" step="0.01" min="0" oninput="calcTotal()">
+      </div>
+
       <div class="stat-card verde">
         <div class="stat-label">Total del Día</div>
         <div class="stat-value" id="totalDiaDisplay">0,00 €</div>
@@ -2585,7 +2590,9 @@ function calcTotal() {
   const total = parseFloat(document.getElementById('ventaTotal').value)||0;
   const tj    = parseFloat(document.getElementById('ventaTarjeta').value)||0;
   const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
+  const pagosCaja = parseFloat(document.getElementById('ventaPagosCaja')?.value)||0;
   const ef    = Math.max(0, total - tj); // efectivo = total - tarjeta
+  const efectivoEsperado = Math.round((ef + fondo - pagosCaja) * 100) / 100;
 
   // Actualizar campo oculto y display
   document.getElementById('ventaEfectivo').value = ef;
@@ -2594,14 +2601,23 @@ function calcTotal() {
 
   // Cierre de caja
   const cajaRes = document.getElementById('cajaResumen');
-  if (total > 0 || fondo > 0) {
+  if (total > 0 || fondo > 0 || pagosCaja > 0) {
     cajaRes.style.display = 'block';
     document.getElementById('cajaEfVentas').textContent = fmtEur(ef);
     document.getElementById('cajaFondoShow').textContent = fmtEur(fondo);
-    document.getElementById('cajaTotalEsperado').textContent = fmtEur(ef + fondo);
+    let pagosShow = document.getElementById('cajaPagosShow');
+    if (!pagosShow) {
+      const row = document.createElement('div');
+      row.className = 'caja-fila';
+      row.innerHTML = '<span>Pagos proveedores</span><span id="cajaPagosShow">0,00 â‚¬</span>';
+      document.getElementById('cajaTotalEsperado').closest('.caja-fila').before(row);
+      pagosShow = document.getElementById('cajaPagosShow');
+    }
+    pagosShow.textContent = fmtEur(pagosCaja);
+    document.getElementById('cajaTotalEsperado').textContent = fmtEur(efectivoEsperado);
     document.getElementById('cajaTarjetaShow').textContent = fmtEur(tj);
     const difEl = document.getElementById('cajaDiferencia');
-    difEl.innerHTML = '<span>Efectivo esperado en caja</span><span>' + fmtEur(ef + fondo) + '</span>';
+    difEl.innerHTML = '<span>Efectivo esperado en caja</span><span>' + fmtEur(efectivoEsperado) + '</span>';
   } else {
     cajaRes.style.display = 'none';
   }
@@ -3845,6 +3861,7 @@ async function guardarVenta() {
 
   const fondo = parseFloat(document.getElementById('ventaFondo').value)||0;
   const tickets = parseInt(document.getElementById('ventaTickets').value)||0;
+  const pagosCaja = parseFloat(document.getElementById('ventaPagosCaja')?.value)||0;
   const syncIdV = getId();
   const venta = {
     id: syncIdV,
@@ -3856,6 +3873,7 @@ async function guardarVenta() {
     total: total,
     fondo: fondo,
     tickets: tickets,
+    pagosCaja: pagosCaja,
     notas: document.getElementById('ventaNotas').value.trim(),
     usuario: usuarioActual ? usuarioActual.nombre : 'Desconocido',
     createdAt: nowIso(),
@@ -3873,6 +3891,7 @@ async function guardarVenta() {
     efectivo: venta.efectivo,
     tarjeta: venta.tarjeta,
     total: venta.total,
+    pagosCaja: venta.pagosCaja || 0,
     notas: venta.notas,
     usuario: venta.usuario,
     syncId: venta.syncId,
@@ -4014,6 +4033,7 @@ async function cargarDatosDesdeSheet() {
         id: v.syncId, syncId: v.syncId, fecha: parseFecha(v.fecha),
         tienda: v.tienda === 'Tienda San Asturio' ? 'tienda1' : 'tienda2',  // ventas no tienen 'ambas'
         efectivo: parseFloat(v.efectivo)||0, tarjeta: parseFloat(v.tarjeta)||0,
+        pagosCaja: parseFloat(v.pagosCaja !== undefined && v.pagosCaja !== '' ? v.pagosCaja : (v.pagos_caja !== undefined && v.pagos_caja !== '' ? v.pagos_caja : (localesVById.get(v.syncId)||{}).pagosCaja))||0,
         total: parseFloat(v.total)||0, notas: v.notas||'', usuario: v.usuario || (localesVById.get(v.syncId)||{}).usuario || '',
         createdAt: v.createdAt || v.created_at || v.fechaCreacion || (localesVById.get(v.syncId)||{}).createdAt || '',
         synced: true
@@ -4128,7 +4148,7 @@ async function reintentarPendientes() {
   for (const v of ventas) {
     const ok = await syncData('addVenta', {venta: {
       fecha: v.fecha, tienda: nombreTienda(v.tienda),
-      efectivo: v.efectivo, tarjeta: v.tarjeta, total: v.total, notas: v.notas,
+      efectivo: v.efectivo, tarjeta: v.tarjeta, total: v.total, pagosCaja: v.pagosCaja || 0, notas: v.notas,
       usuario: v.usuario || '', syncId: v.syncId,
       createdAt: v.createdAt || nowIso()
     }});
@@ -4249,6 +4269,7 @@ function syncPayloadRegistro(tipo, item) {
     efectivo: item.efectivo || 0,
     tarjeta: item.tarjeta || 0,
     total: item.total || 0,
+    pagosCaja: item.pagosCaja || 0,
     notas: item.notas || '',
     usuario: item.usuario || '',
     syncId: item.syncId,
@@ -4481,6 +4502,7 @@ function abrirEditarRegistro(tipo, id) {
   if (tipo === 'venta') {
     html += campoEdit('Total ventas (â‚¬)', '<input type="number" class="field-input" id="editTotal" step="0.01" min="0" value="' + (item.total || 0) + '">');
     html += campoEdit('Tarjeta/datÃ¡fono (â‚¬)', '<input type="number" class="field-input" id="editTarjeta" step="0.01" min="0" value="' + (item.tarjeta || 0) + '">');
+    html += campoEdit('Pagos proveedores desde caja (â‚¬)', '<input type="number" class="field-input" id="editPagosCaja" step="0.01" min="0" value="' + (item.pagosCaja || 0) + '">');
     html += campoEdit('Notas', '<textarea class="field-textarea" id="editNotas">' + escapeHtml(item.notas || '') + '</textarea>');
   } else if (tipo === 'factura') {
     html += campoEdit('Proveedor', '<input type="text" class="field-input" id="editProveedor" value="' + escapeHtml(item.proveedor || '') + '">');
@@ -4527,8 +4549,9 @@ async function guardarEdicionRegistro() {
   if (tipo === 'venta') {
     const total = parseFloat(document.getElementById('editTotal').value) || 0;
     const tarjeta = parseFloat(document.getElementById('editTarjeta').value) || 0;
+    const pagosCaja = parseFloat(document.getElementById('editPagosCaja').value) || 0;
     if (total <= 0) { showToast('Introduce el total', 'error'); return; }
-    actualizado = { ...actualizado, total, tarjeta, efectivo: Math.max(0, total - tarjeta), notas: document.getElementById('editNotas').value.trim() };
+    actualizado = { ...actualizado, total, tarjeta, efectivo: Math.max(0, total - tarjeta), pagosCaja, notas: document.getElementById('editNotas').value.trim() };
   } else if (tipo === 'factura') {
     const proveedor = document.getElementById('editProveedor').value.trim();
     const importeTotal = parseFloat(document.getElementById('editImporteTotal').value) || 0;
@@ -5189,6 +5212,8 @@ function resetFormVenta() {
   document.getElementById('ventaTotal').value = '';
   document.getElementById('ventaTarjeta').value = '';
   document.getElementById('ventaEfectivo').value = '0';
+  const pagosCaja = document.getElementById('ventaPagosCaja');
+  if (pagosCaja) pagosCaja.value = '';
   document.getElementById('ventaNotas').value = '';
   document.getElementById('ventaFondo').value = '';
   document.getElementById('ventaTickets').value = '';
@@ -6600,9 +6625,10 @@ function actualizarConteoEfectivo() {
   const total = parseFloat(document.getElementById('ventaTotal')?.value)||0;
   const tj    = parseFloat(document.getElementById('ventaTarjeta')?.value)||0;
   const fondo = parseFloat(document.getElementById('ventaFondo')?.value)||0;
-  const efEsperado = Math.max(0, total - tj) + fondo;
+  const pagosCaja = parseFloat(document.getElementById('ventaPagosCaja')?.value)||0;
+  const efEsperado = Math.round((Math.max(0, total - tj) + fondo - pagosCaja) * 100) / 100;
   const difEl = document.getElementById('diferenciaCaja');
-  if (difEl && efEsperado > 0) {
+  if (difEl && (total > 0 || fondo > 0 || pagosCaja > 0)) {
     const dif = Math.round((totalContado - efEsperado) * 100) / 100;
     difEl.style.display = 'block';
     if (Math.abs(dif) < 0.01) {
