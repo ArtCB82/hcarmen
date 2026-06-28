@@ -1,3 +1,8 @@
+# Google Apps Script - Alimentacion HCarmen
+
+Copia este codigo completo en el editor de Google Apps Script.
+
+`javascript
 /**
  * API para Alimentacion HCarmen v7.3
  * Backend: Google Apps Script + Google Sheets
@@ -954,3 +959,5 @@ function getApiUsage(mes) {
     return { error: err.toString() };
   }
 }
+
+`

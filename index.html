@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Alimentación HCarmen</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" onerror="this.onerror=null;this.src='vendor/chart.umd.min.js'"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" onerror="this.onerror=null;this.src='vendor/pdf.min.js'"></script>
 <style>
 
   :root {
@@ -2385,7 +2385,7 @@
 <script>
 
 // ── CONFIGURACIÓN ──
-const APP_VERSION = 'v1.10.4';
+const APP_VERSION = 'v1.10.6';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzw79H2icOEE_A-4N86p8EvuPZtTSMc3XA9FtAhJU7_Zb3PSlz5uW9mmWfoKt7qyJDNyw/exec';
 const MODOS_FACTURACION = {
   revisar: 'Revisar manualmente',
@@ -2518,6 +2518,51 @@ function fmtEur(n) {
 
 // ── CERRAR AUTOCOMPLETE AL HACER CLICK FUERA ──
 document.addEventListener('click', e => {
+  const actionEl = e.target.closest('[data-action]');
+  if (actionEl) {
+    const action = actionEl.dataset.action;
+    if (action === 'edit-registro') {
+      abrirEditarRegistro(actionEl.dataset.tipo, actionEl.dataset.id);
+      return;
+    }
+    if (action === 'borrar-registro') {
+      borrarRegistro(actionEl.dataset.tipo, actionEl.dataset.id, actionEl);
+      return;
+    }
+    if (action === 'abrir-dia') {
+      abrirDetalleDia(actionEl.dataset.fecha);
+      return;
+    }
+    if (action === 'seleccionar-cotejo') {
+      seleccionarDesdeModalCotejo(actionEl.dataset.id);
+      return;
+    }
+    if (action === 'seleccionar-proveedor') {
+      seleccionarProveedor(actionEl.dataset.id);
+      return;
+    }
+    if (action === 'nuevo-proveedor') {
+      mostrarModalProveedor();
+      return;
+    }
+    if (action === 'reset-proveedor') {
+      resetProveedor();
+      return;
+    }
+    if (action === 'ver-proveedor') {
+      verDetalleProveedor(actionEl.dataset.nombre);
+      return;
+    }
+    if (action === 'editar-proveedor') {
+      mostrarModalProveedor(actionEl.dataset.id);
+      return;
+    }
+    if (action === 'borrar-proveedor') {
+      borrarProveedor(actionEl.dataset.id);
+      return;
+    }
+  }
+
   const wrapper = document.getElementById('provInputWrapper');
   if (wrapper && !wrapper.contains(e.target)) {
     const box = document.getElementById('autocompleteBox');
@@ -2777,8 +2822,7 @@ async function procesarPDF(file) {
   }
   showToast('Procesando PDF...', '');
   try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js';
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const numPages = Math.min(pdf.numPages, 4); // máx 4 páginas
@@ -2834,7 +2878,7 @@ async function mostrarFoto(src) {
 
     // Enviar imagen via GET con datos codificados
     // (usamos GET porque no-cors POST no permite leer respuesta)
-    const datos = JSON.stringify({ action: 'analizarFoto', imagen: compressed, tempId });
+    const datos = JSON.stringify({ action: 'analizarFoto', imagen: compressed, tempId, authToken: getAuthToken() });
     
     // Intentar primero con POST cors (funciona si el Script tiene CORS correcto)
     let enviado = false;
@@ -2978,7 +3022,7 @@ function mostrarModalCotejo(textoOCR, candidatos) {
       candidatos.map(({p, score}) => {
         const pct = Math.round(score * 100);
         const color = score >= 0.85 ? 'var(--verde)' : score >= 0.65 ? 'var(--naranja)' : 'var(--gris)';
-        return `<button onclick="seleccionarDesdeModalCotejo('${p.id}')" style="width:100%;text-align:left;background:var(--gris-claro);border:2px solid transparent;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:'Lato',sans-serif;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--verde)'" onmouseout="this.style.borderColor='transparent'">
+        return `<button data-action="seleccionar-cotejo" data-id="${escapeHtml(p.id)}" style="width:100%;text-align:left;background:var(--gris-claro);border:2px solid transparent;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;font-family:'Lato',sans-serif;transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--verde)'" onmouseout="this.style.borderColor='transparent'">
           <div style="font-weight:700;font-size:14px;color:var(--texto)">${p.razonSocial}</div>
           <div style="font-size:11px;color:${color};margin-top:2px">Similitud: ${pct}%${score >= 0.85 ? ' · Alta confianza' : score >= 0.65 ? ' · Probable' : ' · Posible'}</div>
         </button>`;
@@ -3323,7 +3367,7 @@ function seleccionarProveedor(id) {
   document.getElementById('factProveedor').value = p.razonSocial;
   document.getElementById('autocompleteBox').style.display = 'none';
   const badge = document.getElementById('provBadge');
-  badge.innerHTML = '<div class="prov-badge"><div class="prov-badge-info"><span class="prov-badge-nombre">✓ ' + p.razonSocial + '</span><span class="prov-badge-cif">' + (p.cif || '') + '</span></div><button class="btn-cambiar-prov" onclick="resetProveedor()">Cambiar</button></div>';
+  badge.innerHTML = '<div class="prov-badge"><div class="prov-badge-info"><span class="prov-badge-nombre">✓ ' + escapeHtml(p.razonSocial) + '</span><span class="prov-badge-cif">' + escapeHtml(p.cif || '') + '</span></div><button class="btn-cambiar-prov" data-action="reset-proveedor">Cambiar</button></div>';
   badge.style.display = 'block';
   document.getElementById('provInputWrapper').style.display = 'none';
 }
@@ -3340,9 +3384,9 @@ function buscarProveedor(texto) {
   if (proveedorSeleccionado || !texto.trim()) { box.style.display = 'none'; return; }
   const provs = getProveedores();
   const matches = provs.filter(p => p.razonSocial.toLowerCase().includes(texto.toLowerCase()));
-  let html = matches.map(p => '<div class="autocomplete-item" onclick="seleccionarProveedor(\'' + p.id + '\')"><span class="prov-nombre">' + p.razonSocial + '</span><span class="prov-cif">' + (p.cif || '') + '</span></div>').join('');
+  let html = matches.map(p => '<div class="autocomplete-item" data-action="seleccionar-proveedor" data-id="' + escapeHtml(p.id) + '"><span class="prov-nombre">' + escapeHtml(p.razonSocial) + '</span><span class="prov-cif">' + escapeHtml(p.cif || '') + '</span></div>').join('');
   if (!matches.length) {
-    html = '<div class="autocomplete-nuevo" onclick="mostrarModalProveedor()">➕ Crear nuevo proveedor</div>';
+    html = '<div class="autocomplete-nuevo" data-action="nuevo-proveedor">➕ Crear nuevo proveedor</div>';
   }
   box.innerHTML = html;
   box.style.display = 'block';
@@ -3445,23 +3489,22 @@ function renderListaProveedores(filtro) {
     return;
   }
   lista.innerHTML = provs.map(p => {
-    const safeNombre = p.razonSocial.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     const nDocs = getStorage('hcarmen_facturas').filter(f => proveedorCoincideFactura(f, p)).length;
-    return '<div class="item-card" onclick="verDetalleProveedor(\'' + safeNombre + '\')" style="cursor:pointer">' +
+    return '<div class="item-card" data-action="ver-proveedor" data-nombre="' + escapeHtml(p.razonSocial) + '" style="cursor:pointer">' +
       '<div class="item-tipo-dot factura">🏢</div>' +
       '<div class="item-info">' +
-        '<div class="item-titulo">' + p.razonSocial + '</div>' +
+        '<div class="item-titulo">' + escapeHtml(p.razonSocial) + '</div>' +
         '<div class="item-meta">' +
-          '<span>' + (p.cif||'Sin CIF') + '</span>' +
-          (p.telefono ? '<span>' + p.telefono + '</span>' : '') +
+          '<span>' + escapeHtml(p.cif||'Sin CIF') + '</span>' +
+          (p.telefono ? '<span>' + escapeHtml(p.telefono) + '</span>' : '') +
           '<span>' + (MODOS_FACTURACION[p.modoFacturacion || 'revisar'] || 'Revisar') + '</span>' +
           (nDocs ? '<span>' + nDocs + ' doc' + (nDocs!==1?'s':'') + '</span>' : '') +
         '</div>' +
         '<div class="item-synced">' + (p.synced ? '☁️ Sincronizado' : '⏳ Pendiente') + '</div>' +
       '</div>' +
-      '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">' +
-        '<button onclick="mostrarModalProveedor(\'' + p.id + '\')" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">✏️ Editar</button>' +
-        '<button onclick="borrarProveedor(\'' + p.id + '\')" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">🗑 Borrar</button>' +
+      '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">' +
+        '<button data-action="editar-proveedor" data-id="' + escapeHtml(p.id) + '" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">✏️ Editar</button>' +
+        '<button data-action="borrar-proveedor" data-id="' + escapeHtml(p.id) + '" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Lato\',sans-serif">🗑 Borrar</button>' +
       '</div>' +
     '</div>';
   }).join('');
@@ -3974,20 +4017,74 @@ async function guardarGasto() {
 
 // ── SINCRONIZACIÓN GOOGLE SHEETS ──
 
-// Enviar dato al Sheet via GET (evita restricciones CORS de GitHub Pages)
-async function syncData(action, payload) {
+const SYNC_GET_MAX_URL = 1800;
+
+async function syncDataGet(encoded) {
+  const url = APPS_SCRIPT_URL + '?method=post&data=' + encoded + '&_ts=' + Date.now();
+  const res = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
+  return await res.json();
+}
+
+async function syncDataPost(datos) {
+  const res = await fetch(APPS_SCRIPT_URL + '?_ts=' + Date.now(), {
+    method: 'POST',
+    mode: 'cors',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: datos
+  });
+  return await res.json();
+}
+
+function getAuthToken() {
   try {
-    const datos = JSON.stringify({action, ...payload});
+    const session = JSON.parse(localStorage.getItem('hcarmen_session') || '{}');
+    return session && session.token ? session.token : '';
+  } catch(e) {
+    return '';
+  }
+}
+
+// Enviar accion al Sheet. GET se mantiene como camino estable; POST se usa cuando el payload no cabe bien en URL.
+async function sendAction(action, payload, options) {
+  try {
+    const opts = options || {};
+    const data = { action, ...(payload || {}) };
+    const token = getAuthToken();
+    if (!opts.skipAuth && token) data.authToken = token;
+    const datos = JSON.stringify(data);
     const encoded = encodeURIComponent(datos);
-    const url = APPS_SCRIPT_URL + '?method=post&data=' + encoded + '&_ts=' + Date.now();
-    const res = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
-    const result = await res.json();
+    const getUrlLength = APPS_SCRIPT_URL.length + encoded.length + 40;
+    let result;
+
+    if (getUrlLength <= SYNC_GET_MAX_URL) {
+      result = await syncDataGet(encoded);
+    } else {
+      try {
+        result = await syncDataPost(datos);
+      } catch (postError) {
+        console.warn('[SYNC] POST fallido:', postError);
+        if (getUrlLength <= 7500) {
+          result = await syncDataGet(encoded);
+        } else {
+          throw postError;
+        }
+      }
+    }
+
     console.log('[SYNC] Respuesta:', result);
-    return result.success === true;
+    return result || {};
   } catch(e) {
     console.warn('[SYNC] Error de red:', e);
-    return false;
+    return { success: false, error: e.message || String(e) };
   }
+}
+
+async function syncData(action, payload) {
+  const result = await sendAction(action, payload);
+  if (result && result.error === 'AUTH_REQUIRED') cerrarSesion();
+  if (result && result.error === 'FORBIDDEN') showToast('Acceso denegado', 'error');
+  return result.success === true;
 }
 
 // Cargar datos desde Google Sheets (el Sheet manda — sincronización bidireccional)
@@ -3995,9 +4092,7 @@ async function cargarDatosDesdeSheet() {
   try {
     if (sheetPullInProgress) return;
     sheetPullInProgress = true;
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getAll&_ts=' + Date.now(), { method: 'GET', mode: 'cors', cache: 'no-store' });
-    if (!res.ok) return;
-    const data = await res.json();
+    const data = await sendAction('getAll', {});
     if (data.error) { console.warn('[SYNC] Error del Sheet:', data.error); return; }
 
     // Guardar pendientes locales para no perderlos
@@ -4311,7 +4406,7 @@ function pintarRegistroResumen(item, opciones) {
   const clase = tipo;
   const tiendaTag = item.tienda === 'tienda1' ? 'S.Asturio' : item.tienda === 'tienda2' ? 'J.Guzman' : 'Ambas';
   const adminBtns = esAdminActual()
-    ? '<button class="btn-small-edit" onclick="abrirEditarRegistro(\'' + tipo + '\',\'' + registroId(item) + '\')">Editar</button>'
+    ? '<button class="btn-small-edit" data-action="edit-registro" data-tipo="' + escapeHtml(tipo) + '" data-id="' + escapeHtml(registroId(item)) + '">Editar</button>'
     : '';
   const extra = tipo === 'factura'
     ? '<div class="modal-record-meta">' + escapeHtml(item.tipo || 'factura') + (item.numeroFactura ? ' · N° ' + escapeHtml(item.numeroFactura) : '') + '</div>'
@@ -4387,8 +4482,8 @@ function renderHistorial(filtro) {
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
         <div class="item-importe ${clasImporte}">${importe}</div>
-        ${esAdminActual() ? `<button onclick="abrirEditarRegistro('${item._tipo}','${registroId(item)}')" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;">Editar</button>` : ''}
-        <button onclick="borrarRegistro('${item._tipo}','${registroId(item)}',this)" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">🗑 Borrar</button>
+        ${esAdminActual() ? `<button data-action="edit-registro" data-tipo="${escapeHtml(item._tipo)}" data-id="${escapeHtml(registroId(item))}" style="background:var(--verde-suave);border:none;color:var(--verde);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:800;cursor:pointer;font-family:'Lato',sans-serif;">Editar</button>` : ''}
+        <button data-action="borrar-registro" data-tipo="${escapeHtml(item._tipo)}" data-id="${escapeHtml(registroId(item))}" style="background:#fee2e2;border:none;color:#c1440e;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:'Lato',sans-serif;">🗑 Borrar</button>
       </div>
     </div>`;
   }).join('');
@@ -4778,7 +4873,7 @@ function renderCalendario() {
       marcaCalendario('factura', 'F', r.factura),
       marcaCalendario('gasto', 'G', r.gasto)
     ].join('');
-    return `<div class="calendar-day ${d.getMonth() !== m ? 'muted' : ''} ${key === hoyKey ? 'today' : ''}" onclick="abrirDetalleDia('${key}')">
+    return `<div class="calendar-day ${d.getMonth() !== m ? 'muted' : ''} ${key === hoyKey ? 'today' : ''}" data-action="abrir-dia" data-fecha="${key}">
       <div class="calendar-day-num">${d.getDate()}</div>
       <div class="calendar-marks">${marks}</div>
     </div>`;
@@ -4801,7 +4896,7 @@ function renderCalendarioSemana() {
       <span>${x.titulo}</span>
       <strong>${fmtEur(x.importe)}</strong>
     </div>`).join('') : `<div style="font-size:13px;color:var(--gris);padding-top:2px">Sin registros</div>`;
-    return `<div class="calendar-week-day" onclick="abrirDetalleDia('${key}')" style="cursor:pointer">
+    return `<div class="calendar-week-day" data-action="abrir-dia" data-fecha="${key}" style="cursor:pointer">
       <div class="calendar-week-head">
         <div class="calendar-week-date">${d.toLocaleDateString('es-ES', {weekday:'long', day:'2-digit', month:'2-digit'})}</div>
         <div class="calendar-week-total">${regs.length} registros &middot; ${fmtEur(total)}</div>
@@ -5266,15 +5361,14 @@ function showToast(msg, tipo) {
 // ══════════════════════════════════════════════════════
 
 const USUARIOS = [
-  { id: 'usr_admin', nombre: 'Arturo', rol: 'admin', pin: '1982', color: '#2d6a4f', activo: true },
-  { id: 'usr_arturo', nombre: 'Arturo H', rol: 'user', pin: '1234', color: '#1d4ed8', activo: true },
-  { id: 'usr_arturop', nombre: 'Arturo P', rol: 'user', pin: '2081', color: '#e07a2f', activo: true },
-  { id: 'usr_carmen', nombre: 'Carmen', rol: 'user', pin: '2081', color: '#c1440e', activo: true },
-  { id: 'usr_alvaro', nombre: 'Alvaro', rol: 'user', pin: '0000', color: '#7c3aed', activo: true },
-  { id: 'usr_sonia', nombre: 'Sonia', rol: 'user', pin: '0000', color: '#0891b2', activo: true }
+  { id: 'usr_admin', nombre: 'Arturo', rol: 'admin', color: '#2d6a4f', activo: true },
+  { id: 'usr_arturo', nombre: 'Arturo H', rol: 'user', color: '#1d4ed8', activo: true },
+  { id: 'usr_arturop', nombre: 'Arturo P', rol: 'user', color: '#e07a2f', activo: true },
+  { id: 'usr_carmen', nombre: 'Carmen', rol: 'user', color: '#c1440e', activo: true },
+  { id: 'usr_alvaro', nombre: 'Alvaro', rol: 'user', color: '#7c3aed', activo: true },
+  { id: 'usr_sonia', nombre: 'Sonia', rol: 'user', color: '#0891b2', activo: true }
 ];
-// ⚠️ PARA AÑADIR O MODIFICAR USUARIOS: editar esta lista directamente en el código.
-// Los cambios se despliegan automáticamente en GitHub Pages al hacer push.
+// Lista publica para pintar el login. Los PINs se validan en Apps Script.
 
 let usuarioActual = null;
 let pinBuffer = '';
@@ -5349,20 +5443,28 @@ function actualizarDots(error = false) {
   }
 }
 
-function verificarPin() {
-  if (pinBuffer === usuarioPinTarget.pin) {
-    iniciarSesion(usuarioPinTarget);
-  } else {
+async function verificarPin() {
+  const pin = pinBuffer;
+  try {
+    const result = await sendAction('login', { userId: usuarioPinTarget.id, pin }, { skipAuth: true });
+    if (result && result.success && result.usuario && result.token) {
+      iniciarSesion(result.usuario, result.token, result.expira);
+      return;
+    }
     actualizarDots(true);
     setTimeout(() => { pinBuffer = ''; actualizarDots(); }, 800);
     showToast('PIN incorrecto', 'error');
+  } catch(e) {
+    actualizarDots(true);
+    setTimeout(() => { pinBuffer = ''; actualizarDots(); }, 800);
+    showToast('No se pudo validar el PIN', 'error');
   }
 }
 
-function iniciarSesion(usuario) {
+function iniciarSesion(usuario, token, expiraServidor) {
   usuarioActual = usuario;
-  const expira = Date.now() + SESSION_DURATION;
-  localStorage.setItem('hcarmen_session', JSON.stringify({ userId: usuario.id, expira }));
+  const expira = expiraServidor || (Date.now() + SESSION_DURATION);
+  localStorage.setItem('hcarmen_session', JSON.stringify({ userId: usuario.id, usuario, token, expira }));
   
   cerrarPin();
   document.getElementById('screen-login').style.display = 'none';
@@ -5379,7 +5481,7 @@ function iniciarSesion(usuario) {
   
   // Iniciar temporizador de sesión
   if (sessionTimer) clearTimeout(sessionTimer);
-  sessionTimer = setTimeout(cerrarSesion, SESSION_DURATION);
+  sessionTimer = setTimeout(cerrarSesion, Math.max(1000, expira - Date.now()));
   
   registrarLog('LOGIN', 'Inicio de sesión');
   showToast('Bienvenido, ' + usuario.nombre + ' 👋', 'ok');
@@ -5405,8 +5507,8 @@ function cerrarSesion() {
 function recuperarSesion() {
   try {
     const session = JSON.parse(localStorage.getItem('hcarmen_session'));
-    if (session && session.expira > Date.now()) {
-      const usuario = getUsuarios().find(u => u.id === session.userId);
+    if (session && session.token && session.expira > Date.now()) {
+      const usuario = session.usuario || getUsuarios().find(u => u.id === session.userId);
       if (usuario && usuario.activo) {
         usuarioActual = usuario;
         actualizarHeaderUsuario();
@@ -5506,8 +5608,7 @@ async function cargarUsoApi() {
   // Luego intentar obtener datos del Sheet (suma entre dispositivos)
   try {
     const mesKey = new Date().toISOString().slice(0,7);
-    const res = await fetch(APPS_SCRIPT_URL + '?action=getApiUsage&mes=' + mesKey, { method: 'GET', mode: 'cors' });
-    const data = await res.json();
+    const data = await sendAction('getApiUsage', { mes: mesKey });
     if (!data.error && data.llamadas !== undefined) {
       document.getElementById('apiCallsMes').textContent = data.llamadas;
       document.getElementById('apiCosteMes').textContent = (data.llamadas * 0.015).toFixed(2) + '€';
@@ -5533,11 +5634,8 @@ function renderAdminLog() {
 
 async function testApiClaude() {
   document.getElementById('adminApiStatus').innerHTML = '⏳ Verificando...';
-  const ok = await syncData('testApi', {});
-  // Como syncData usa GET, llamamos directamente
   try {
-    const res = await fetch(APPS_SCRIPT_URL + '?action=testApi', { method: 'GET', mode: 'cors' });
-    const data = await res.json();
+    const data = await sendAction('testApi', {});
     if (data.ok) {
       document.getElementById('adminApiStatus').innerHTML = '✅ API activa · Modelo: ' + (data.modelo || 'claude-opus-4-5') + '<br><span style="color:var(--gris);font-size:12px">Último test: ' + new Date().toLocaleTimeString('es-ES') + '</span>';
     } else {
